@@ -1,6 +1,7 @@
 import React from 'react';
 import { WeightUnit } from '../../types';
 import { Typography } from '../atoms/Typography';
+import { useSettingsStore } from '../../store/useSettingsStore';
 import { Minus, Plus, X } from 'lucide-react';
 
 interface SetInputRowProps {
@@ -22,6 +23,8 @@ export const SetInputRow: React.FC<SetInputRowProps> = ({
   onUpdateReps,
   onRemoveSet,
 }) => {
+  const { language } = useSettingsStore();
+
   const adjustWeight = (delta: number) => {
     const current = parseFloat(weight) || 0;
     const next = Math.max(0, current + delta);
@@ -196,7 +199,7 @@ export const SetInputRow: React.FC<SetInputRowProps> = ({
       <button
         type="button"
         onClick={onRemoveSet}
-        title="Remove Set"
+        title={language === 'es' ? 'Eliminar Serie' : 'Remove Set'}
         style={{
           border: 'none',
           backgroundColor: 'transparent',

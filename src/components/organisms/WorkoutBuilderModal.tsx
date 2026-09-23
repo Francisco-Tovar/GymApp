@@ -6,6 +6,8 @@ import { Button } from '../atoms/Button';
 import { Badge } from '../atoms/Badge';
 import { Modal } from '../atoms/Modal';
 import { BodyMuscleMap } from './BodyMuscleMap';
+import { useSettingsStore } from '../../store/useSettingsStore';
+import { t, translateMuscleList } from '../../utils/i18n';
 import { ChevronUp, ChevronDown, Check, X, Search } from 'lucide-react';
 
 interface WorkoutBuilderModalProps {
@@ -23,6 +25,7 @@ export const WorkoutBuilderModal: React.FC<WorkoutBuilderModalProps> = ({
   availableExercises,
   initialWorkout,
 }) => {
+  const { language } = useSettingsStore();
   const [name, setName] = useState('');
   const [selectedIds, setSelectedIds] = useState<number[]>([]);
   const [search, setSearch] = useState('');
@@ -84,11 +87,11 @@ export const WorkoutBuilderModal: React.FC<WorkoutBuilderModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) {
-      setError('Workout routine name is required.');
+      setError(language === 'es' ? 'El nombre de la rutina es obligatorio.' : 'Workout routine name is required.');
       return;
     }
     if (selectedIds.length === 0) {
-      setError('Please select at least one exercise.');
+      setError(language === 'es' ? 'Por favor selecciona al menos un ejercicio.' : 'Please select at least one exercise.');
       return;
     }
 
@@ -98,7 +101,7 @@ export const WorkoutBuilderModal: React.FC<WorkoutBuilderModalProps> = ({
       await onSubmit(name.trim(), selectedIds);
       onClose();
     } catch (err: any) {
-      setError(err?.message || 'Failed to save workout routine.');
+      setError(err?.message || (language === 'es' ? 'Error al guardar la rutina.' : 'Failed to save workout routine.'));
     } finally {
       setSaving(false);
     }
@@ -110,7 +113,7 @@ export const WorkoutBuilderModal: React.FC<WorkoutBuilderModalProps> = ({
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <Typography variant="h2">
-            {initialWorkout?.id ? 'Edit Routine' : 'Create Routine'}
+            {initialWorkout?.id ? t('edit_routine', language) : t('create_routine', language)}
           </Typography>
           <button
             type="button"
@@ -129,8 +132,8 @@ export const WorkoutBuilderModal: React.FC<WorkoutBuilderModalProps> = ({
 
         <form onSubmit={handleSubmit}>
           <Input
-            label="Routine Name"
-            placeholder="e.g. Upper Body Hypertrophy"
+            label={t('routine_name', language)}
+            placeholder={t('routine_name_placeholder', language)}
             value={name}
             onChange={(e) => setName(e.target.value)}
             error={error}
@@ -139,7 +142,7 @@ export const WorkoutBuilderModal: React.FC<WorkoutBuilderModalProps> = ({
           {/* Muscle Heatmap Preview */}
           <BodyMuscleMap
             selectedMuscleGroups={muscleGroups}
-            title="Routine Muscle Coverage"
+            title={t('routine_muscle_coverage', language)}
             collapsible={true}
             defaultCollapsed={false}
           />
@@ -149,7 +152,7 @@ export const WorkoutBuilderModal: React.FC<WorkoutBuilderModalProps> = ({
             <div style={{ margin: '16px 0' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                 <Typography variant="label" color="var(--accent)" weight="bold">
-                  Routine Order ({selectedExercises.length})
+                  {t('routine_order', language)} ({selectedExercises.length})
                 </Typography>
               </div>
 
@@ -229,14 +232,14 @@ export const WorkoutBuilderModal: React.FC<WorkoutBuilderModalProps> = ({
           {/* Exercise Library Picker */}
           <div style={{ margin: '16px 0' }}>
             <Typography variant="label" color="var(--text-secondary)" weight="bold" style={{ marginBottom: '8px' }}>
-              Select Exercises from Library
+              {t('select_exercises_library', language)}
             </Typography>
 
             <div style={{ position: 'relative', marginBottom: '10px' }}>
               <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
               <input
                 type="text"
-                placeholder="Search exercises by name or muscle..."
+                placeholder={t('search_exercises_placeholder', language)}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="input-field"
@@ -277,7 +280,7 @@ export const WorkoutBuilderModal: React.FC<WorkoutBuilderModalProps> = ({
                         {ex.name}
                       </Typography>
                       <Typography variant="caption" color="var(--text-subtle)">
-                        {ex.muscle_groups}
+                        {translateMuscleList(ex.muscle_groups, language)}
                       </Typography>
                     </div>
 
@@ -305,10 +308,14 @@ export const WorkoutBuilderModal: React.FC<WorkoutBuilderModalProps> = ({
           {/* Actions */}
           <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
             <Button type="button" variant="secondary" onClick={onClose} style={{ flex: 1 }}>
-              Cancel
+              {t('cancel', language)}
             </Button>
             <Button type="submit" variant="primary" disabled={saving} style={{ flex: 1.5 }}>
-              {saving ? 'Saving...' : initialWorkout?.id ? 'Update Routine' : 'Save Routine'}
+              {saving
+                ? (language === 'es' ? 'Guardando...' : 'Saving...')
+                : initialWorkout?.id
+                ? t('update_routine', language)
+                : t('save_routine', language)}
             </Button>
           </div>
         </form>

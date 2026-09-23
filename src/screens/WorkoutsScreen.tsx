@@ -187,16 +187,16 @@ export const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({
               <Flame size={20} />
             </div>
             <div>
-              <Typography variant="label" color="#a5b4fc" weight="bold">
-                Session In Progress
+              <Typography variant="label" color="var(--primary)" weight="bold">
+                {t('session_in_progress', language)}
               </Typography>
-              <Typography variant="h3" color="#ffffff">
-                {activeWorkoutName || 'Active Routine'}
+              <Typography variant="h3" color="var(--text-primary)">
+                {activeWorkoutName || t('workouts', language)}
               </Typography>
             </div>
           </div>
           <Button variant="primary" size="sm" rightIcon={<Play size={14} />}>
-            Resume
+            {t('resume', language)}
           </Button>
         </div>
       )}
@@ -426,17 +426,17 @@ export const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({
         maxWidth="440px"
       >
         <Typography variant="h2" style={{ marginBottom: '8px' }}>
-          Delete Workout Routine?
+          {t('delete_workout_title', language)}
         </Typography>
         <Typography variant="body" color="var(--text-secondary)" style={{ marginBottom: '20px' }}>
-          Are you sure you want to delete <strong>"{deletingWorkout?.name}"</strong>? This will remove the routine from your list.
+          {t('delete_workout_desc', language)} {deletingWorkout?.name && `("${deletingWorkout.name}")`}
         </Typography>
         <div style={{ display: 'flex', gap: '10px' }}>
           <Button variant="secondary" onClick={() => setDeletingWorkout(null)} style={{ flex: 1 }}>
-            Cancel
+            {t('cancel', language)}
           </Button>
           <Button variant="danger" onClick={confirmDelete} style={{ flex: 1 }}>
-            Delete Routine
+            {t('delete', language)}
           </Button>
         </div>
       </Modal>

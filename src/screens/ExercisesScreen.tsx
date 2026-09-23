@@ -10,10 +10,11 @@ import { Modal } from '../components/atoms/Modal';
 import { ExerciseFormModal } from '../components/organisms/ExerciseFormModal';
 import { ProgressiveOverloadChart } from '../components/organisms/ProgressiveOverloadChart';
 import { WorkoutSessionRecord } from '../utils/progressiveOverload';
-import { Plus, Search, Edit2, Trash2, Library, Dumbbell, TrendingUp } from 'lucide-react';
+import { t, translateMuscleGroup } from '../utils/i18n';
+import { Plus, Search, Edit2, Trash2, Library, TrendingUp } from 'lucide-react';
 
 export const ExercisesScreen: React.FC = () => {
-  const { unit } = useSettingsStore();
+  const { unit, language } = useSettingsStore();
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [sessionRecords, setSessionRecords] = useState<WorkoutSessionRecord[]>([]);
   const [search, setSearch] = useState('');
@@ -41,7 +42,6 @@ export const ExercisesScreen: React.FC = () => {
       setLoading(false);
     }
   };
-
 
   useEffect(() => {
     loadData();
@@ -91,9 +91,9 @@ export const ExercisesScreen: React.FC = () => {
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <div>
-          <Typography variant="h1">Exercise Library</Typography>
+          <Typography variant="h1">{t('exercise_library', language)}</Typography>
           <Typography variant="caption" color="var(--text-muted)">
-            {exercises.length} movements available
+            {exercises.length} {t('movements_available', language)}
           </Typography>
         </div>
 
@@ -106,7 +106,7 @@ export const ExercisesScreen: React.FC = () => {
             setIsModalOpen(true);
           }}
         >
-          Add Exercise
+          {t('add_exercise', language)}
         </Button>
       </div>
 
@@ -115,7 +115,7 @@ export const ExercisesScreen: React.FC = () => {
         <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
         <input
           type="text"
-          placeholder="Search movements or muscles..."
+          placeholder={t('search_movements_placeholder', language)}
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="input-field"
@@ -151,7 +151,7 @@ export const ExercisesScreen: React.FC = () => {
               transition: 'all 0.15s ease',
             }}
           >
-            {cat}
+            {cat === 'All' ? t('all', language) : translateMuscleGroup(cat, language)}
           </button>
         ))}
       </div>
@@ -160,17 +160,17 @@ export const ExercisesScreen: React.FC = () => {
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <Typography variant="body" color="var(--text-muted)">
-            Loading library...
+            {language === 'es' ? 'Cargando biblioteca...' : 'Loading library...'}
           </Typography>
         </div>
       ) : filteredExercises.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <Library size={48} style={{ color: 'var(--text-subtle)', marginBottom: '12px' }} />
           <Typography variant="h3" style={{ marginBottom: '6px' }}>
-            No Movements Found
+            {t('no_movements_found', language)}
           </Typography>
           <Typography variant="caption" color="var(--text-muted)">
-            Try adjusting your search filter or add a new exercise to your library.
+            {t('no_movements_desc', language)}
           </Typography>
         </div>
       ) : (
@@ -184,7 +184,7 @@ export const ExercisesScreen: React.FC = () => {
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                   {ex.muscle_groups.split(',').map((m, idx) => (
                     <Badge key={idx} variant="primary">
-                      {m.trim()}
+                      {translateMuscleGroup(m.trim(), language)}
                     </Badge>
                   ))}
                 </div>
@@ -196,7 +196,7 @@ export const ExercisesScreen: React.FC = () => {
                   onClick={() => setExerciseForChart(ex)}
                   className="btn btn-secondary btn-icon"
                   style={{ width: '32px', height: '32px', color: 'var(--accent)' }}
-                  title="View Progressive Overload Chart"
+                  title={language === 'es' ? 'Ver Gráfico de Sobrecarga Progresiva' : 'View Progressive Overload Chart'}
                 >
                   <TrendingUp size={14} />
                 </button>
@@ -208,7 +208,7 @@ export const ExercisesScreen: React.FC = () => {
                   }}
                   className="btn btn-secondary btn-icon"
                   style={{ width: '32px', height: '32px' }}
-                  title="Edit Exercise"
+                  title={language === 'es' ? 'Editar Ejercicio' : 'Edit Exercise'}
                 >
                   <Edit2 size={14} />
                 </button>
@@ -217,7 +217,7 @@ export const ExercisesScreen: React.FC = () => {
                   onClick={() => setExerciseToDelete(ex)}
                   className="btn btn-danger btn-icon"
                   style={{ width: '32px', height: '32px' }}
-                  title="Delete Exercise"
+                  title={language === 'es' ? 'Eliminar Ejercicio' : 'Delete Exercise'}
                 >
                   <Trash2 size={14} />
                 </button>
@@ -238,7 +238,7 @@ export const ExercisesScreen: React.FC = () => {
           records={sessionRecords}
           defaultExerciseId={String(exerciseForChart?.id ?? exerciseForChart?.name ?? '')}
           unit={unit}
-          title={exerciseForChart ? `${exerciseForChart.name} Overload` : undefined}
+          title={exerciseForChart ? `${exerciseForChart.name} ${language === 'es' ? 'Sobrecarga' : 'Overload'}` : undefined}
           style={{ border: 'none', padding: '0', background: 'transparent', boxShadow: 'none' }}
           onClose={() => setExerciseForChart(null)}
         />
@@ -263,17 +263,19 @@ export const ExercisesScreen: React.FC = () => {
         maxWidth="440px"
       >
         <Typography variant="h2" style={{ marginBottom: '8px' }}>
-          Delete Exercise?
+          {t('delete_exercise_title', language)}
         </Typography>
         <Typography variant="body" color="var(--text-secondary)" style={{ marginBottom: '20px' }}>
-          Are you sure you want to remove <strong>"{exerciseToDelete?.name}"</strong>? It will also be removed from any workouts and history.
+          {language === 'es'
+            ? `¿Estás seguro de que deseas eliminar "${exerciseToDelete?.name}"? También se eliminará de cualquier rutina e historial.`
+            : `Are you sure you want to remove "${exerciseToDelete?.name}"? It will also be removed from any workouts and history.`}
         </Typography>
         <div style={{ display: 'flex', gap: '10px' }}>
           <Button variant="secondary" onClick={() => setExerciseToDelete(null)} style={{ flex: 1 }}>
-            Cancel
+            {t('cancel', language)}
           </Button>
           <Button variant="danger" onClick={confirmDelete} style={{ flex: 1 }}>
-            Delete Exercise
+            {t('delete_exercise', language)}
           </Button>
         </div>
       </Modal>

@@ -180,7 +180,7 @@ export const HistoryScreen: React.FC = () => {
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <Typography variant="body" color="var(--text-muted)">
-            Loading logs...
+            {language === 'es' ? 'Cargando registros...' : 'Loading logs...'}
           </Typography>
         </div>
       ) : viewMode === 'analytics' ? (
@@ -269,10 +269,12 @@ export const HistoryScreen: React.FC = () => {
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <History size={48} style={{ color: 'var(--text-subtle)', marginBottom: '12px' }} />
           <Typography variant="h3" style={{ marginBottom: '6px' }}>
-            No Completed Sessions
+            {language === 'es' ? 'Sin Sesiones Completadas' : 'No Completed Sessions'}
           </Typography>
           <Typography variant="caption" color="var(--text-muted)">
-            Complete your first workout routine to view your training logs and progress here.
+            {language === 'es'
+              ? 'Completa tu primera rutina para ver aquí tus registros y progreso de entrenamiento.'
+              : 'Complete your first workout routine to view your training logs and progress here.'}
           </Typography>
         </div>
       ) : (
@@ -316,7 +318,7 @@ export const HistoryScreen: React.FC = () => {
                   </div>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Badge variant="primary">{s.total_sets || 0} Sets</Badge>
+                    <Badge variant="primary">{s.total_sets || 0} {t('sets', language)}</Badge>
                     <span style={{ color: 'var(--text-muted)' }}>
                       {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
                     </span>
@@ -334,7 +336,7 @@ export const HistoryScreen: React.FC = () => {
                   >
                     {sets.length === 0 ? (
                       <Typography variant="caption" color="var(--text-muted)">
-                        Loading exercise breakdown...
+                        {language === 'es' ? 'Cargando detalle de ejercicios...' : 'Loading exercise breakdown...'}
                       </Typography>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
@@ -365,7 +367,9 @@ export const HistoryScreen: React.FC = () => {
                                       padding: '2px 0',
                                     }}
                                   >
-                                    <span style={{ color: 'var(--text-muted)' }}>Set {setItem.set_number}</span>
+                                    <span style={{ color: 'var(--text-muted)' }}>
+                                      {language === 'es' ? 'Serie' : 'Set'} {setItem.set_number}
+                                    </span>
                                     <span style={{ fontWeight: 600 }}>
                                       {convertedWeight} {unit} × {setItem.reps} reps
                                     </span>
@@ -389,7 +393,7 @@ export const HistoryScreen: React.FC = () => {
                         style={{ padding: '6px 12px' }}
                       >
                         <Trash2 size={14} />
-                        <span>Delete Log</span>
+                        <span>{language === 'es' ? 'Eliminar Registro' : 'Delete Log'}</span>
                       </button>
                     </div>
                   </div>
@@ -408,17 +412,19 @@ export const HistoryScreen: React.FC = () => {
         maxWidth="440px"
       >
         <Typography variant="h2" style={{ marginBottom: '8px' }}>
-          Delete Workout Log?
+          {language === 'es' ? '¿Eliminar Registro de Entrenamiento?' : 'Delete Workout Log?'}
         </Typography>
         <Typography variant="body" color="var(--text-secondary)" style={{ marginBottom: '20px' }}>
-          Are you sure you want to delete this recorded session from {sessionToDelete ? formatDate(sessionToDelete.date) : ''}?
+          {language === 'es'
+            ? `¿Estás seguro de que deseas eliminar esta sesión registrada del ${sessionToDelete ? formatDate(sessionToDelete.date) : ''}?`
+            : `Are you sure you want to delete this recorded session from ${sessionToDelete ? formatDate(sessionToDelete.date) : ''}?`}
         </Typography>
         <div style={{ display: 'flex', gap: '10px' }}>
           <Button variant="secondary" onClick={() => setSessionToDelete(null)} style={{ flex: 1 }}>
-            Cancel
+            {t('cancel', language)}
           </Button>
           <Button variant="danger" onClick={confirmDelete} style={{ flex: 1 }}>
-            Delete Log
+            {language === 'es' ? 'Eliminar Registro' : 'Delete Log'}
           </Button>
         </div>
       </Modal>

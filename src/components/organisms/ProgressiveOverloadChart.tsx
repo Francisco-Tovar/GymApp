@@ -18,6 +18,8 @@ import { Card } from '../atoms/Card';
 import { Badge } from '../atoms/Badge';
 import { Button } from '../atoms/Button';
 import { Combobox } from '../atoms/Combobox';
+import { useSettingsStore } from '../../store/useSettingsStore';
+import { t } from '../../utils/i18n';
 import { TrendingUp, Award, Activity, Calendar, Dumbbell, Sparkles, ArrowLeft } from 'lucide-react';
 
 export interface ProgressiveOverloadChartProps {
@@ -57,14 +59,17 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
   defaultExerciseId,
   defaultTimeRange = 'all',
   unit = 'lb',
-  title = 'Progressive Overload Tracker',
+  title,
   style,
   onClose,
 }) => {
+  const { language } = useSettingsStore();
   const [activeMode, setActiveMode] = useState<ProgressionMode>('e1rm');
   const [timeRange, setTimeRange] = useState<TimeRangeInterval>(defaultTimeRange);
   const [selectedExercise, setSelectedExercise] = useState<string>('');
   const [hoveredPoint, setHoveredPoint] = useState<ProcessedDataPoint | null>(null);
+
+  const displayTitle = title || (language === 'es' ? 'Seguimiento de Sobrecarga Progresiva' : 'Progressive Overload Tracker');
 
 
   // Extract available exercises from records
@@ -303,7 +308,7 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
           )}
           <div>
             <Typography variant="h3" style={{ fontSize: '17px', lineHeight: 1.2 }}>
-              {title}
+              {displayTitle}
             </Typography>
             <Typography variant="caption" color="var(--text-muted)">
               {getModeYAxisLabel(activeMode, unit)}
@@ -317,11 +322,11 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
             options={availableExercises.map((ex) => ({
               value: ex.id,
               label: ex.name,
-              subLabel: `${ex.sessionCount} session${ex.sessionCount !== 1 ? 's' : ''}`,
+              subLabel: `${ex.sessionCount} ${language === 'es' ? 'sesiones' : 'sessions'}`,
             }))}
             value={selectedExercise}
             onChange={(val) => setSelectedExercise(val)}
-            placeholder="Select an exercise..."
+            placeholder={language === 'es' ? 'Selecciona un ejercicio...' : 'Select an exercise...'}
             disabled={availableExercises.length === 0}
             size="md"
           />
@@ -360,7 +365,7 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
             boxShadow: activeMode === 'e1rm' ? '0 2px 8px var(--primary-glow)' : 'none',
           }}
         >
-          Estimated 1RM
+          {t('estimated_1rm', language)}
         </button>
 
         <button
@@ -381,7 +386,7 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
             boxShadow: activeMode === 'topSet' ? '0 2px 8px var(--primary-glow)' : 'none',
           }}
         >
-          Top Set Load
+          {t('top_set_load', language)}
         </button>
 
         <button
@@ -402,7 +407,7 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
             boxShadow: activeMode === 'volume' ? '0 2px 8px var(--primary-glow)' : 'none',
           }}
         >
-          Total Volume
+          {t('total_volume', language)}
         </button>
       </div>
 
@@ -414,10 +419,12 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
             color="var(--text-muted)"
             style={{ fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.04em' }}
           >
-            Time Window
+            {language === 'es' ? 'Ventana de Tiempo' : 'Time Window'}
           </Typography>
           <span style={{ fontSize: '11px', color: 'var(--text-subtle)' }}>
-            {dataPoints.length} session{dataPoints.length !== 1 ? 's' : ''} in view
+            {language === 'es'
+              ? `${dataPoints.length} sesión(es) en vista`
+              : `${dataPoints.length} session${dataPoints.length !== 1 ? 's' : ''} in view`}
           </span>
         </div>
 
@@ -479,7 +486,7 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
         >
           <div>
             <Typography variant="caption" color="var(--text-muted)" style={{ fontSize: '11px' }}>
-              Latest Value
+              {language === 'es' ? 'Último Valor' : 'Latest Value'}
             </Typography>
             <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px' }}>
               {stats.current}
@@ -488,7 +495,7 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
 
           <div>
             <Typography variant="caption" color="var(--text-muted)" style={{ fontSize: '11px' }}>
-              All-Time Peak
+              {language === 'es' ? 'Récord Histórico' : 'All-Time Peak'}
             </Typography>
             <div
               style={{
@@ -508,7 +515,7 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
 
           <div>
             <Typography variant="caption" color="var(--text-muted)" style={{ fontSize: '11px' }}>
-              Net Overload
+              {language === 'es' ? 'Sobrecarga Neta' : 'Net Overload'}
             </Typography>
             <div
               style={{
@@ -519,7 +526,7 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
               }}
             >
               {stats.sessionCount <= 1
-                ? 'Base Log'
+                ? (language === 'es' ? 'Base Inicial' : 'Base Log')
                 : `${stats.deltaPct >= 0 ? '+' : ''}${stats.deltaPct}%`}
             </div>
           </div>
@@ -545,18 +552,22 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
         >
           <Dumbbell size={36} color="var(--text-subtle)" />
           <Typography variant="h3" style={{ fontSize: '15px' }}>
-            No Data in Selected Interval
+            {language === 'es' ? 'Sin Datos en el Intervalo Seleccionado' : 'No Data in Selected Interval'}
           </Typography>
           <Typography variant="caption" color="var(--text-muted)" style={{ maxWidth: '320px' }}>
             {availableExercises.length === 0
-              ? 'Complete a workout session containing sets for this exercise to generate overload analytics.'
-              : `No recorded history for "${activeExerciseName}" within ${
-                  TIME_RANGE_OPTIONS.find((o) => o.key === timeRange)?.label.toLowerCase() || 'this range'
-                }.`}
+              ? (language === 'es'
+                  ? 'Completa una sesión de entrenamiento con series para este ejercicio para generar métricas de sobrecarga.'
+                  : 'Complete a workout session containing sets for this exercise to generate overload analytics.')
+              : (language === 'es'
+                  ? `Sin historial registrado para "${activeExerciseName}" dentro de este intervalo.`
+                  : `No recorded history for "${activeExerciseName}" within ${
+                      TIME_RANGE_OPTIONS.find((o) => o.key === timeRange)?.label.toLowerCase() || 'this range'
+                    }.`)}
           </Typography>
           {timeRange !== 'all' && (
             <Button size="sm" variant="secondary" onClick={() => setTimeRange('all')} style={{ marginTop: '4px' }}>
-              Show All Time
+              {language === 'es' ? 'Mostrar Todo el Historial' : 'Show All Time'}
             </Button>
           )}
         </div>

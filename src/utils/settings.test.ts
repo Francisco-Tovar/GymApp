@@ -1,4 +1,4 @@
-import { t, TRANSLATIONS } from './i18n';
+import { t, TRANSLATIONS, translateMuscleGroup, translateMuscleList } from './i18n';
 import { useSettingsStore, applyThemeToDocument } from '../store/useSettingsStore';
 
 function runSettingsTestSuite() {
@@ -16,22 +16,38 @@ function runSettingsTestSuite() {
   console.assert(t('dark_mode', 'es') === 'Modo Oscuro', 'Spanish dark mode mismatch');
   console.assert(t('light_mode', 'es') === 'Modo Claro', 'Spanish light mode mismatch');
   console.assert(t('workouts', 'es') === 'Rutinas', 'Spanish workouts mismatch');
+  console.assert(t('session_in_progress', 'es') === 'Sesión en Curso', 'Spanish session_in_progress mismatch');
+  console.assert(t('resume', 'es') === 'Reanudar', 'Spanish resume mismatch');
+  console.assert(t('rest', 'es') === 'Descanso', 'Spanish rest mismatch');
+  console.assert(t('session_muscle_activation', 'es') === 'Activación Muscular de la Sesión', 'Spanish activation mismatch');
+  console.assert(t('targeted', 'es') === 'Trabajados', 'Spanish targeted mismatch');
+  console.assert(t('add_set', 'es') === 'Agregar Serie', 'Spanish add_set mismatch');
+  console.assert(t('finish_workout', 'es') === 'Finalizar Entrenamiento', 'Spanish finish_workout mismatch');
+  console.assert(t('cancel_session_title', 'es') === '¿Cancelar Sesión?', 'Spanish cancel_session_title mismatch');
 
-  // Test 3: Fallback on unknown key or missing translation
+  // Test 3: Muscle Group Translations
+  console.assert(translateMuscleGroup('Quadriceps', 'es') === 'Cuádriceps', 'Quadriceps ES mismatch');
+  console.assert(translateMuscleGroup('Glutes', 'es') === 'Glúteos', 'Glutes ES mismatch');
+  console.assert(translateMuscleGroup('Chest', 'es') === 'Pecho', 'Chest ES mismatch');
+  console.assert(translateMuscleGroup('Quadriceps', 'en') === 'Quadriceps', 'Quadriceps EN mismatch');
+  console.assert(translateMuscleList('Quadriceps, Glutes', 'es') === 'Cuádriceps, Glúteos', 'Muscle list ES mismatch');
+  console.assert(translateMuscleList('Chest, Shoulders, Triceps', 'es') === 'Pecho, Hombros, Tríceps', 'Muscle list ES mismatch 2');
+
+  // Test 4: Fallback on unknown key or missing translation
   // @ts-expect-error Testing fallback for nonexistent key
   const fallbackVal = t('non_existent_key_123', 'es');
   console.assert(fallbackVal === 'non_existent_key_123', 'Fallback for unknown key failed');
 
-  // Test 4: Default language parameter fallback to English
+  // Test 5: Default language parameter fallback to English
   console.assert(t('danger_zone') === 'Danger Zone', 'Default param language fallback failed');
 
-  // Test 5: Store initial values and mutations
+  // Test 6: Store initial values and mutations
   const store = useSettingsStore.getState();
   console.assert(typeof store.theme === 'string', 'Theme should be defined');
   console.assert(typeof store.language === 'string', 'Language should be defined');
   console.assert(typeof store.unit === 'string', 'Unit should be defined');
 
-  // Test 6: Theme switching
+  // Test 7: Theme switching
   store.setTheme('light');
   console.assert(useSettingsStore.getState().theme === 'light', 'setTheme to light failed');
   store.setTheme('dark');
@@ -41,19 +57,19 @@ function runSettingsTestSuite() {
   store.toggleTheme();
   console.assert(useSettingsStore.getState().theme === 'dark', 'toggleTheme back to dark failed');
 
-  // Test 7: Language switching
+  // Test 8: Language switching
   store.setLanguage('es');
   console.assert(useSettingsStore.getState().language === 'es', 'setLanguage to es failed');
   store.setLanguage('en');
   console.assert(useSettingsStore.getState().language === 'en', 'setLanguage to en failed');
 
-  // Test 8: Unit switching
+  // Test 9: Unit switching
   store.setUnit('kg');
   console.assert(useSettingsStore.getState().unit === 'kg', 'setUnit to kg failed');
   store.toggleUnit();
   console.assert(useSettingsStore.getState().unit === 'lb', 'toggleUnit to lb failed');
 
-  // Test 9: All Spanish dictionary entries exist for English keys
+  // Test 10: All Spanish dictionary entries exist for English keys
   const enKeys = Object.keys(TRANSLATIONS.en) as (keyof typeof TRANSLATIONS.en)[];
   let missingCount = 0;
   for (const k of enKeys) {

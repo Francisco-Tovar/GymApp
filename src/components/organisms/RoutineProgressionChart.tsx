@@ -10,6 +10,8 @@ import { Typography } from '../atoms/Typography';
 import { Card } from '../atoms/Card';
 import { Badge } from '../atoms/Badge';
 import { Combobox } from '../atoms/Combobox';
+import { useSettingsStore } from '../../store/useSettingsStore';
+import { t } from '../../utils/i18n';
 import {
   TrendingUp,
   Award,
@@ -38,13 +40,14 @@ export interface RoutineProgressionChartProps {
 export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = ({
   records,
   unit = 'lbs',
-  title = 'Routine Progression Overload',
+  title,
   subtitle,
   availableWorkouts,
   selectedWorkoutId,
   onSelectWorkoutId,
   onClose,
 }) => {
+  const { language } = useSettingsStore();
   const [metricMode, setMetricMode] = useState<RoutineMetricMode>('relativeGrowth');
   const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
   const [hasInitializedVisibility, setHasInitializedVisibility] = useState(false);
@@ -253,6 +256,9 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
   const activeHoveredSession =
     hoveredSessionIndex !== null ? chartData.sessions[hoveredSessionIndex] : null;
 
+  const displayTitle = title || t('routine_progression_overload', language);
+  const displaySubtitle = subtitle || t('routine_progression_subtitle', language);
+
   return (
     <Card
       style={{
@@ -320,12 +326,11 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
                 <TrendingUp size={20} color="var(--primary)" />
               )}
               <Typography variant="h2" style={{ fontSize: '18px', fontWeight: 800 }}>
-                {title}
+                {displayTitle}
               </Typography>
             </div>
             <Typography variant="caption" color="var(--text-muted)">
-              {subtitle ||
-                'Track all movements simultaneously across the shared routine timeline'}
+              {displaySubtitle}
             </Typography>
           </div>
 
@@ -334,7 +339,7 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
             {availableWorkouts && availableWorkouts.length > 0 && onSelectWorkoutId && (
               <Combobox
                 options={[
-                  { value: '', label: 'All Routine Workouts' },
+                  { value: '', label: language === 'es' ? 'Todas las Rutinas' : 'All Routine Workouts' },
                   ...availableWorkouts.map((w) => ({ value: w.id, label: w.name })),
                 ]}
                 value={selectedWorkoutId ?? ''}
@@ -367,11 +372,11 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
                 <Layers size={13} color="var(--text-muted)" />
                 <Typography variant="caption" color="var(--text-muted)" style={{ fontSize: '11px' }}>
-                  Tracked Lifts
+                  {t('tracked_lifts', language)}
                 </Typography>
               </div>
               <Typography variant="body" style={{ fontWeight: 800, fontSize: '14px' }}>
-                {activeVisibleIds.size} / {chartData.series.length} visible
+                {activeVisibleIds.size} / {chartData.series.length} {t('visible', language)}
               </Typography>
             </div>
 
@@ -386,11 +391,11 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
                 <Calendar size={13} color="var(--text-muted)" />
                 <Typography variant="caption" color="var(--text-muted)" style={{ fontSize: '11px' }}>
-                  Timeline Span
+                  {t('timeline_span', language)}
                 </Typography>
               </div>
               <Typography variant="body" style={{ fontWeight: 800, fontSize: '14px' }}>
-                {chartData.sessions.length} sessions
+                {chartData.sessions.length} {t('sessions', language)}
               </Typography>
             </div>
 
@@ -406,7 +411,7 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
                   <Award size={13} color="var(--success)" />
                   <Typography variant="caption" color="var(--success)" style={{ fontSize: '11px', fontWeight: 700 }}>
-                    Top Gainer
+                    {t('top_gainer', language)}
                   </Typography>
                 </div>
                 <Typography
@@ -441,10 +446,10 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
       >
         {(
           [
-            { id: 'relativeGrowth', label: 'Relative Growth (%)', icon: Flame },
-            { id: 'e1rm', label: `Estimated 1RM (${unit})`, icon: TrendingUp },
-            { id: 'topSet', label: `Top Set Load (${unit})`, icon: Award },
-            { id: 'volume', label: `Total Volume (${unit})`, icon: Layers },
+            { id: 'relativeGrowth', label: `${t('relative_growth', language)} (%)`, icon: Flame },
+            { id: 'e1rm', label: `${t('estimated_1rm', language)} (${unit})`, icon: TrendingUp },
+            { id: 'topSet', label: `${t('top_set_load', language)} (${unit})`, icon: Award },
+            { id: 'volume', label: `${t('total_volume', language)} (${unit})`, icon: Layers },
           ] as const
         ).map((modeItem) => {
           const isActive = metricMode === modeItem.id;
@@ -496,10 +501,10 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
         >
           <Layers size={36} color="var(--text-subtle)" style={{ marginBottom: '8px' }} />
           <Typography variant="body" style={{ fontWeight: 600, marginBottom: '4px' }}>
-            No Routine Sessions Logged Yet
+            {t('no_routine_sessions', language)}
           </Typography>
           <Typography variant="caption" color="var(--text-muted)">
-            Complete workouts under this routine to unlock multi-movement progression tracking.
+            {t('no_routine_sessions_desc', language)}
           </Typography>
         </div>
       ) : activeVisibleIds.size === 0 ? (
@@ -519,10 +524,10 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
         >
           <EyeOff size={36} color="var(--text-subtle)" style={{ marginBottom: '8px' }} />
           <Typography variant="body" style={{ fontWeight: 600, marginBottom: '4px' }}>
-            All Exercise Lines Hidden
+            {t('all_lines_hidden', language)}
           </Typography>
           <Typography variant="caption" color="var(--text-muted)" style={{ marginBottom: '12px' }}>
-            Select an exercise tag from the legend below or click "Select All" to view progress.
+            {t('all_lines_hidden_desc', language)}
           </Typography>
           <button
             type="button"
@@ -538,7 +543,7 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
               cursor: 'pointer',
             }}
           >
-            Show All Lines
+            {t('show_all_lines', language)}
           </button>
         </div>
       ) : (
@@ -851,10 +856,10 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <Typography variant="caption" style={{ fontWeight: 700, color: 'var(--text-muted)' }}>
-                EXERCISES LEGEND
+                {t('exercises_legend', language)}
               </Typography>
               <Typography variant="caption" color="var(--text-subtle)" style={{ fontSize: '10px' }}>
-                (Tap to toggle · Double-tap to isolate)
+                {t('legend_tip', language)}
               </Typography>
             </div>
 
@@ -876,7 +881,7 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
                 }}
               >
                 <CheckSquare size={12} />
-                <span>Select All</span>
+                <span>{t('select_all', language)}</span>
               </button>
 
               <button
@@ -896,7 +901,7 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
                 }}
               >
                 <Square size={12} />
-                <span>Deselect All</span>
+                <span>{t('deselect_all', language)}</span>
               </button>
             </div>
           </div>

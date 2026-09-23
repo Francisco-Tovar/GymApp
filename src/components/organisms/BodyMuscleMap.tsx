@@ -1,4 +1,6 @@
 import React, { useState, useMemo } from 'react';
+import { useSettingsStore } from '../../store/useSettingsStore';
+import { t, translateMuscleGroup } from '../../utils/i18n';
 import { Typography } from '../atoms/Typography';
 import { Badge } from '../atoms/Badge';
 
@@ -9,33 +11,34 @@ export interface BodyMuscleMapProps {
   defaultCollapsed?: boolean;
 }
 
-// Normalize muscle names to internal keys
+// Normalize muscle names to internal keys (supports both EN and ES)
 export const normalizeMuscle = (muscleStr: string): string[] => {
   const normalized = muscleStr.toLowerCase().trim();
   const keys: string[] = [];
 
-  if (normalized.includes('chest') || normalized.includes('pectoral')) keys.push('chest');
-  if (normalized.includes('shoulder') || normalized.includes('deltoid') || normalized.includes('delt')) keys.push('shoulders');
-  if (normalized.includes('bicep')) keys.push('biceps');
-  if (normalized.includes('tricep')) keys.push('triceps');
-  if (normalized.includes('forearm')) keys.push('forearms');
-  if (normalized.includes('quad') || normalized.includes('thigh')) keys.push('quads');
-  if (normalized.includes('hamstring')) keys.push('hamstrings');
-  if (normalized.includes('glute') || normalized.includes('butt')) keys.push('glutes');
-  if (normalized.includes('calf') || normalized.includes('calves')) keys.push('calves');
-  if (normalized.includes('lat') || normalized.includes('lats')) keys.push('lats');
+  if (normalized.includes('chest') || normalized.includes('pectoral') || normalized.includes('pecho')) keys.push('chest');
+  if (normalized.includes('shoulder') || normalized.includes('deltoid') || normalized.includes('delt') || normalized.includes('hombro')) keys.push('shoulders');
+  if (normalized.includes('bicep') || normalized.includes('bícep')) keys.push('biceps');
+  if (normalized.includes('tricep') || normalized.includes('trícep')) keys.push('triceps');
+  if (normalized.includes('forearm') || normalized.includes('antebrazo')) keys.push('forearms');
+  if (normalized.includes('quad') || normalized.includes('thigh') || normalized.includes('cuádricep') || normalized.includes('cuadricep') || normalized.includes('muslo')) keys.push('quads');
+  if (normalized.includes('hamstring') || normalized.includes('isquio') || normalized.includes('femoral')) keys.push('hamstrings');
+  if (normalized.includes('glute') || normalized.includes('butt') || normalized.includes('glúteo') || normalized.includes('gluteo')) keys.push('glutes');
+  if (normalized.includes('calf') || normalized.includes('calves') || normalized.includes('pantorrilla') || normalized.includes('gemelo')) keys.push('calves');
+  if (normalized.includes('lat') || normalized.includes('lats') || normalized.includes('dorsal')) keys.push('lats');
   if (
     normalized.includes('upper back') ||
     normalized.includes('mid back') ||
-    (normalized.includes('back') && !normalized.includes('lower'))
+    normalized.includes('espalda alta') ||
+    ((normalized.includes('back') || normalized.includes('espalda')) && !normalized.includes('lower') && !normalized.includes('baja'))
   ) {
     keys.push('upper_back');
     if (!keys.includes('lats')) keys.push('lats');
   }
-  if (normalized.includes('lower back') || normalized.includes('erector')) keys.push('lower_back');
-  if (normalized.includes('abs') || normalized.includes('abdom') || normalized.includes('core') || normalized.includes('oblique'))
+  if (normalized.includes('lower back') || normalized.includes('erector') || normalized.includes('espalda baja') || normalized.includes('lumbar')) keys.push('lower_back');
+  if (normalized.includes('abs') || normalized.includes('abdom') || normalized.includes('core') || normalized.includes('oblique') || normalized.includes('oblicuo'))
     keys.push('abs');
-  if (normalized.includes('trap')) keys.push('traps');
+  if (normalized.includes('trap') || normalized.includes('trapecio')) keys.push('traps');
 
   return keys;
 };
@@ -48,6 +51,7 @@ export const BodyMuscleMap: React.FC<BodyMuscleMapProps> = ({
 }) => {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const [activeView, setActiveView] = useState<'both' | 'front' | 'back'>('both');
+  const { language } = useSettingsStore();
 
   const activeMuscleMap = useMemo(() => {
     const map: Record<string, number> = {};
@@ -123,7 +127,7 @@ export const BodyMuscleMap: React.FC<BodyMuscleMapProps> = ({
             variant={activeCount > 0 ? 'accent' : 'muted'}
             style={{ flexShrink: 0, whiteSpace: 'nowrap' }}
           >
-            {activeCount} Targeted
+            {activeCount} {t('targeted', language)}
           </Badge>
         </div>
 
@@ -138,7 +142,7 @@ export const BodyMuscleMap: React.FC<BodyMuscleMapProps> = ({
               marginLeft: '4px',
             }}
           >
-            {collapsed ? '▼ Show' : '▲ Hide'}
+            {collapsed ? `▼ ${t('show', language)}` : `▲ ${t('hide', language)}`}
           </span>
         )}
       </div>
@@ -176,7 +180,7 @@ export const BodyMuscleMap: React.FC<BodyMuscleMapProps> = ({
                   whiteSpace: 'nowrap',
                 }}
               >
-                {mode === 'both' ? 'Both' : mode === 'front' ? 'Front' : 'Back'}
+                {mode === 'both' ? t('both', language) : mode === 'front' ? t('front', language) : t('back_view', language)}
               </button>
             ))}
           </div>
@@ -197,7 +201,7 @@ export const BodyMuscleMap: React.FC<BodyMuscleMapProps> = ({
             {(activeView === 'both' || activeView === 'front') && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '1px', marginBottom: '6px' }}>
-                  FRONT
+                  {t('front', language).toUpperCase()}
                 </span>
                 <svg
                   viewBox="0 0 160 300"
@@ -276,7 +280,7 @@ export const BodyMuscleMap: React.FC<BodyMuscleMapProps> = ({
             {(activeView === 'both' || activeView === 'back') && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, letterSpacing: '1px', marginBottom: '6px' }}>
-                  BACK
+                  {t('back_view', language).toUpperCase()}
                 </span>
                 <svg
                   viewBox="0 0 160 300"
@@ -360,7 +364,7 @@ export const BodyMuscleMap: React.FC<BodyMuscleMapProps> = ({
               </Typography>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                 {Object.entries(activeMuscleMap).map(([mKey, count]) => {
-                  const label = mKey.replace('_', ' ').toUpperCase();
+                  const label = translateMuscleGroup(mKey.replace('_', ' '), language).toUpperCase();
                   return (
                     <Badge key={mKey} variant={count > 1 ? 'accent' : 'primary'}>
                       {label} ({count})
@@ -372,7 +376,7 @@ export const BodyMuscleMap: React.FC<BodyMuscleMapProps> = ({
           ) : (
             <div style={{ marginTop: '8px', textAlign: 'center' }}>
               <Typography variant="caption" color="var(--text-subtle)">
-                Select exercises below to light up targeted muscle groups on the body map.
+                {t('muscle_map_help', language)}
               </Typography>
             </div>
           )}

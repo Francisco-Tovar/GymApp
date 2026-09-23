@@ -6,6 +6,8 @@ import { Badge } from '../atoms/Badge';
 import { Button } from '../atoms/Button';
 import { SetInputRow } from '../molecules/SetInputRow';
 import { LocalSetState } from '../../store/useActiveWorkoutStore';
+import { useSettingsStore } from '../../store/useSettingsStore';
+import { t, translateMuscleGroup } from '../../utils/i18n';
 import { ChevronUp, ChevronDown, Plus, ChevronRight } from 'lucide-react';
 
 interface ActiveSetLoggerProps {
@@ -34,6 +36,7 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
   canMoveDown = false,
 }) => {
   const [collapsed, setCollapsed] = useState(false);
+  const { language } = useSettingsStore();
 
   const muscleList = exercise.muscle_groups
     ? exercise.muscle_groups.split(',').map((m) => m.trim())
@@ -68,14 +71,14 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
           {collapsed ? (
             <div style={{ marginTop: '4px' }}>
               <Typography variant="caption" color="var(--text-muted)">
-                {sets.length} set{sets.length !== 1 ? 's' : ''} · {totalReps} total reps
+                {sets.length} {t('sets', language)} · {totalReps} {t('total_reps', language)}
               </Typography>
             </div>
           ) : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }}>
               {muscleList.map((m, idx) => (
                 <Badge key={idx} variant="primary">
-                  {m}
+                  {translateMuscleGroup(m, language)}
                 </Badge>
               ))}
             </div>
@@ -89,7 +92,7 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
               type="button"
               disabled={!canMoveUp}
               onClick={onMoveUp}
-              title="Move Up"
+              title={language === 'es' ? 'Mover Arriba' : 'Move Up'}
               className="btn btn-secondary btn-icon"
               style={{ width: '32px', height: '32px', opacity: canMoveUp ? 1 : 0.4 }}
             >
@@ -101,7 +104,7 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
               type="button"
               disabled={!canMoveDown}
               onClick={onMoveDown}
-              title="Move Down"
+              title={language === 'es' ? 'Mover Abajo' : 'Move Down'}
               className="btn btn-secondary btn-icon"
               style={{ width: '32px', height: '32px', opacity: canMoveDown ? 1 : 0.4 }}
             >
@@ -117,7 +120,7 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
           {sets.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '16px 0' }}>
               <Typography variant="caption" color="var(--text-subtle)">
-                No sets recorded yet.
+                {t('no_sets_recorded', language)}
               </Typography>
             </div>
           ) : (
@@ -145,7 +148,7 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
               leftIcon={<Plus size={16} />}
               onClick={onAddSet}
             >
-              Add Set
+              {t('add_set', language)}
             </Button>
           </div>
         </div>

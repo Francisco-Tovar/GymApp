@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useActiveWorkoutStore } from '../store/useActiveWorkoutStore';
 import { useSettingsStore } from '../store/useSettingsStore';
+import { t } from '../utils/i18n';
 import { fetchWorkoutById, fetchHeaviestWeightsMap, saveCompletedSession } from '../db/db';
 import { SessionSet, WeightUnit } from '../types';
 import { Typography } from '../components/atoms/Typography';
@@ -22,7 +23,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
   workoutName,
   onFinishOrCancel,
 }) => {
-  const { unit, toggleUnit } = useSettingsStore();
+  const { unit, toggleUnit, language } = useSettingsStore();
 
   const {
     isActive,
@@ -235,7 +236,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
                   borderRadius: 'var(--radius-full)',
                 }}
               >
-                <ShieldCheck size={10} /> Screen Awake
+                <ShieldCheck size={10} /> {t('screen_awake', language)}
               </span>
             )}
           </div>
@@ -245,7 +246,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
         <button
           type="button"
           onClick={toggleUnit}
-          title="Switch weight unit (lb / kg)"
+          title={t('toggle_unit', language)}
           className="btn btn-secondary btn-sm"
           style={{
             fontWeight: 700,
@@ -276,7 +277,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Timer size={16} color="var(--primary)" />
           <Typography variant="label" color="var(--text-secondary)">
-            Rest:
+            {t('rest', language)}:
           </Typography>
           {restTimerSeconds !== null ? (
             <span
@@ -290,7 +291,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
               {formatTimer(restTimerSeconds)}
             </span>
           ) : (
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Off</span>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{t('off', language)}</span>
           )}
         </div>
 
@@ -328,7 +329,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
                 fontWeight: 600,
               }}
             >
-              Reset
+              {t('reset', language)}
             </button>
           )}
         </div>
@@ -337,7 +338,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
       {/* Muscle Heatmap Diagram */}
       <BodyMuscleMap
         selectedMuscleGroups={muscleGroups}
-        title="Session Muscle Activation"
+        title={t('session_muscle_activation', language)}
         collapsible={true}
         defaultCollapsed={true}
       />
@@ -377,7 +378,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
           onClick={() => setShowCancelModal(true)}
           style={{ flex: 1 }}
         >
-          Cancel
+          {t('cancel', language)}
         </Button>
         <Button
           type="button"
@@ -388,7 +389,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
           disabled={loading}
           style={{ flex: 2 }}
         >
-          {loading ? 'Saving...' : 'Finish Workout'}
+          {loading ? t('saving', language) : t('finish_workout', language)}
         </Button>
       </div>
 
@@ -401,17 +402,17 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
           <AlertTriangle size={24} color="var(--danger)" />
-          <Typography variant="h2">Cancel Session?</Typography>
+          <Typography variant="h2">{t('cancel_session_title', language)}</Typography>
         </div>
         <Typography variant="body" color="var(--text-secondary)" style={{ marginBottom: '20px' }}>
-          Are you sure you want to discard this workout? Any unlogged sets will be lost.
+          {t('cancel_session_desc', language)}
         </Typography>
         <div style={{ display: 'flex', gap: '10px' }}>
           <Button variant="secondary" onClick={() => setShowCancelModal(false)} style={{ flex: 1 }}>
-            Keep Going
+            {t('keep_going', language)}
           </Button>
           <Button variant="danger" onClick={handleCancelWorkout} style={{ flex: 1 }}>
-            Discard Workout
+            {t('discard_workout', language)}
           </Button>
         </div>
       </Modal>
