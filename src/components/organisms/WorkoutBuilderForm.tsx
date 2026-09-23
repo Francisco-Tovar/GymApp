@@ -5,6 +5,7 @@ import { Typography } from '../atoms/Typography';
 import { Input } from '../atoms/Input';
 import { Button } from '../atoms/Button';
 import { ExerciseListItem } from '../molecules/ExerciseListItem';
+import { BodyMuscleMap } from './BodyMuscleMap';
 
 interface WorkoutBuilderFormProps {
   exercises: Exercise[];
@@ -85,6 +86,7 @@ export const WorkoutBuilderForm: React.FC<WorkoutBuilderFormProps> = ({
   const exerciseMap = new Map<number, Exercise>();
   exercises.forEach((ex) => exerciseMap.set(ex.id, ex));
   const selectedExercises = selectedIds.map((id) => exerciseMap.get(id)).filter(Boolean) as Exercise[];
+  const selectedMuscleGroups = selectedExercises.map((ex) => ex.muscle_groups);
 
   return (
     <View style={styles.container}>
@@ -95,6 +97,9 @@ export const WorkoutBuilderForm: React.FC<WorkoutBuilderFormProps> = ({
         onChangeText={setWorkoutName}
         error={error && !workoutName.trim() ? error : undefined}
       />
+
+      {/* Interactive Muscle Group Heatmap */}
+      <BodyMuscleMap selectedMuscleGroups={selectedMuscleGroups} />
 
       {/* Selected Exercise Order & Reorder Controls */}
       {selectedExercises.length > 0 ? (
