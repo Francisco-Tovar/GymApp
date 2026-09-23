@@ -7,18 +7,21 @@ import { WorkoutsScreen } from './screens/WorkoutsScreen';
 import { ExercisesScreen } from './screens/ExercisesScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
 import { ActiveSessionScreen } from './screens/ActiveSessionScreen';
+import { SettingsModal } from './components/organisms/SettingsModal';
 import { Typography } from './components/atoms/Typography';
-import { Dumbbell, Wifi, WifiOff } from 'lucide-react';
+import { Dumbbell, Wifi, WifiOff, Settings } from 'lucide-react';
+import { t } from './utils/i18n';
 
 export default function App() {
   const [dbReady, setDbReady] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('workouts');
   const [inSessionView, setInSessionView] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const [selectedWorkout, setSelectedWorkout] = useState<{ id: number; name: string } | null>(null);
 
-  const { unit, toggleUnit } = useSettingsStore();
+  const { unit, toggleUnit, language } = useSettingsStore();
   const { isActive, workoutId: activeWorkoutId, workoutName: activeWorkoutName } = useActiveWorkoutStore();
 
   useEffect(() => {
@@ -127,7 +130,8 @@ export default function App() {
             <button
               type="button"
               onClick={toggleUnit}
-              title="Toggle Weight Unit (LB / KG)"
+              title={t('toggle_unit', language)}
+              aria-label={t('toggle_unit', language)}
               style={{
                 backgroundColor: 'var(--bg-surface)',
                 border: '1px solid var(--border-color)',
@@ -146,6 +150,36 @@ export default function App() {
               <span style={{ color: unit === 'lb' ? 'var(--primary)' : 'var(--text-muted)' }}>LB</span>
               <span style={{ color: 'var(--text-subtle)' }}>/</span>
               <span style={{ color: unit === 'kg' ? 'var(--primary)' : 'var(--text-muted)' }}>KG</span>
+            </button>
+
+            {/* Icon-only Settings Gear Button */}
+            <button
+              type="button"
+              onClick={() => setIsSettingsOpen(true)}
+              aria-label={t('settings', language)}
+              title={t('settings', language)}
+              style={{
+                backgroundColor: 'var(--bg-surface)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-full)',
+                padding: '6px',
+                color: 'var(--text-secondary)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.15s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--text-primary)';
+                e.currentTarget.style.borderColor = 'var(--border-hover)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--text-secondary)';
+                e.currentTarget.style.borderColor = 'var(--border-color)';
+              }}
+            >
+              <Settings size={18} />
             </button>
           </div>
         </header>
@@ -182,6 +216,12 @@ export default function App() {
           hasActiveWorkout={isActive}
         />
       )}
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={isSettingsOpen}
+        onClose={() => setIsSettingsOpen(false)}
+      />
     </>
   );
 }

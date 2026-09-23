@@ -12,6 +12,7 @@ import {
 import { cleanupFullBodyRoutine } from '../db/seedDummyData';
 import { useActiveWorkoutStore } from '../store/useActiveWorkoutStore';
 import { useSettingsStore } from '../store/useSettingsStore';
+import { t } from '../utils/i18n';
 import { Typography } from '../components/atoms/Typography';
 import { Button } from '../components/atoms/Button';
 import { Card } from '../components/atoms/Card';
@@ -45,7 +46,7 @@ export const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({
   const [inspectingRecords, setInspectingRecords] = useState<RoutineSessionRecord[]>([]);
   const [loadingProgression, setLoadingProgression] = useState(false);
 
-  const { unit } = useSettingsStore();
+  const { unit, language } = useSettingsStore();
   const { isActive, workoutName: activeWorkoutName } = useActiveWorkoutStore();
 
   const handleOpenProgression = async (w: Workout) => {
@@ -203,9 +204,9 @@ export const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({
       {/* Header with Title and Create Routine button */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <div>
-          <Typography variant="h1">Workout Routines</Typography>
+          <Typography variant="h1">{t('workout_routines', language)}</Typography>
           <Typography variant="caption" color="var(--text-muted)">
-            {workouts.length} routine{workouts.length !== 1 ? 's' : ''} configured
+            {workouts.length} {t('routines_configured', language)}
           </Typography>
         </div>
 
@@ -218,7 +219,7 @@ export const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({
             setIsBuilderOpen(true);
           }}
         >
-          New Routine
+          {t('new_routine', language)}
         </Button>
       </div>
 
@@ -226,20 +227,20 @@ export const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <Typography variant="body" color="var(--text-muted)">
-            Loading workouts...
+            {t('loading', language)}
           </Typography>
         </div>
       ) : workouts.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <Dumbbell size={48} style={{ color: 'var(--text-subtle)', marginBottom: '12px' }} />
           <Typography variant="h3" style={{ marginBottom: '6px' }}>
-            No Workouts Found
+            {t('no_workouts_found', language)}
           </Typography>
           <Typography variant="caption" color="var(--text-muted)" style={{ marginBottom: '16px' }}>
-            Create your first workout routine to start tracking sets and weights.
+            {t('first_workout_prompt', language)}
           </Typography>
           <Button variant="primary" leftIcon={<Plus size={16} />} onClick={() => setIsBuilderOpen(true)}>
-            Create First Routine
+            {t('create_first_routine', language)}
           </Button>
         </div>
       ) : (
@@ -341,12 +342,13 @@ export const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({
                     style={{ padding: '6px 10px' }}
                   >
                     <Edit2 size={14} />
-                    <span>Edit</span>
+                    <span>{t('edit', language)}</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => setDeletingWorkout(w)}
-                    title="Delete Routine"
+                    title={t('delete', language)}
+                    aria-label={t('delete', language)}
                     className="btn btn-danger btn-sm"
                     style={{ padding: '6px 10px' }}
                   >
@@ -360,7 +362,7 @@ export const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({
                   leftIcon={<Play size={14} />}
                   onClick={() => onStartSession(w.id, w.name)}
                 >
-                  Start
+                  {t('start', language)}
                 </Button>
               </div>
             </Card>

@@ -1,5 +1,7 @@
 import React from 'react';
 import { Dumbbell, Library, History } from 'lucide-react';
+import { useSettingsStore } from '../../store/useSettingsStore';
+import { t } from '../../utils/i18n';
 
 export type TabType = 'workouts' | 'exercises' | 'history';
 
@@ -14,6 +16,8 @@ export const TabBar: React.FC<TabBarProps> = ({
   onSelectTab,
   hasActiveWorkout = false,
 }) => {
+  const { language } = useSettingsStore();
+
   return (
     <nav className="bottom-nav">
       <button
@@ -38,7 +42,7 @@ export const TabBar: React.FC<TabBarProps> = ({
             />
           )}
         </div>
-        <span>Workouts</span>
+        <span>{t('workouts', language)}</span>
       </button>
 
       <button
@@ -47,7 +51,7 @@ export const TabBar: React.FC<TabBarProps> = ({
         onClick={() => onSelectTab('exercises')}
       >
         <Library size={20} />
-        <span>Exercises</span>
+        <span>{t('exercises', language)}</span>
       </button>
 
       <button
@@ -56,7 +60,7 @@ export const TabBar: React.FC<TabBarProps> = ({
         onClick={() => onSelectTab('history')}
       >
         <History size={20} />
-        <span>History</span>
+        <span>{t('history', language)}</span>
       </button>
     </nav>
   );

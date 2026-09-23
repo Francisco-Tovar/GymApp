@@ -1,4 +1,6 @@
-:root {
+:root,
+html.dark,
+[data-theme="dark"] {
   --bg-main: #0f172a;
   --bg-surface: #1e293b;
   --bg-surface-hover: #273549;
@@ -33,7 +35,55 @@
 
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: dark;
 }
+
+html.light,
+[data-theme="light"] {
+  --bg-main: #f8fafc;
+  --bg-surface: #ffffff;
+  --bg-surface-hover: #f1f5f9;
+  --bg-elevated: #e2e8f0;
+  --border-color: #cbd5e1;
+  --border-focus: #6366f1;
+
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
+  --primary-glow: rgba(79, 70, 229, 0.25);
+  --accent: #0284c7;
+  --accent-glow: rgba(2, 132, 199, 0.25);
+
+  --success: #059669;
+  --success-glow: rgba(5, 150, 105, 0.2);
+  --danger: #dc2626;
+  --danger-glow: rgba(220, 38, 38, 0.2);
+  --warning: #d97706;
+
+  --text-primary: #0f172a;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
+  color-scheme: light;
+}
+
+html.light body,
+html.light #root {
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.08);
+}
+
+html.light .glass-panel {
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid var(--border-color);
+}
+
+html.light .glass-card {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+}
+
 
 * {
   box-sizing: border-box;

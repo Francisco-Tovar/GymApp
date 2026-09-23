@@ -12,6 +12,7 @@ import {
 } from '../db/db';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { convertWeight } from '../utils/unitConversion';
+import { t } from '../utils/i18n';
 import { Typography } from '../components/atoms/Typography';
 import { Button } from '../components/atoms/Button';
 import { Card } from '../components/atoms/Card';
@@ -24,7 +25,7 @@ import { RoutineSessionRecord } from '../utils/routineProgression';
 import { Calendar, Trash2, ChevronDown, ChevronRight, History, CheckCircle2, TrendingUp, ListFilter, Layers, BarChart2 } from 'lucide-react';
 
 export const HistoryScreen: React.FC = () => {
-  const { unit } = useSettingsStore();
+  const { unit, language } = useSettingsStore();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [sessionRecords, setSessionRecords] = useState<WorkoutSessionRecord[]>([]);
   const [routineRecords, setRoutineRecords] = useState<RoutineSessionRecord[]>([]);
@@ -108,9 +109,9 @@ export const HistoryScreen: React.FC = () => {
     <div className="animate-fade-in">
       {/* Header */}
       <div style={{ marginBottom: '16px' }}>
-        <Typography variant="h1">Workout History</Typography>
+        <Typography variant="h1">{t('workout_history', language)}</Typography>
         <Typography variant="caption" color="var(--text-muted)">
-          {sessions.length} completed session{sessions.length !== 1 ? 's' : ''} recorded
+          {sessions.length} {t('completed_sessions', language)}
         </Typography>
       </div>
 
@@ -148,7 +149,7 @@ export const HistoryScreen: React.FC = () => {
           }}
         >
           <TrendingUp size={15} />
-          <span>Progressive Overload</span>
+          <span>{t('progressive_overload', language)}</span>
         </button>
 
         <button
@@ -172,7 +173,7 @@ export const HistoryScreen: React.FC = () => {
           }}
         >
           <ListFilter size={15} />
-          <span>Workout Logs ({sessions.length})</span>
+          <span>{t('workout_logs', language)} ({sessions.length})</span>
         </button>
       </div>
 
@@ -224,7 +225,7 @@ export const HistoryScreen: React.FC = () => {
                 }}
               >
                 <Layers size={13} />
-                <span>Routines</span>
+                <span>{t('routines', language)}</span>
               </button>
 
               <button
@@ -247,7 +248,7 @@ export const HistoryScreen: React.FC = () => {
                 }}
               >
                 <TrendingUp size={13} />
-                <span>Exercises</span>
+                <span>{t('exercises', language)}</span>
               </button>
             </div>
           </div>

@@ -729,3 +729,26 @@ export const fetchRoutineSessionRecords = async (
   return results;
 };
 
+/**
+ * Permanently wipes all recorded sessions, session sets, and custom workouts,
+ * and restores default canonical Workout A and Workout B routines.
+ */
+export const clearAllDataAndReset = async (): Promise<void> => {
+  await db.transaction('rw', db.exercises, db.workouts, db.workout_exercises, db.sessions, db.session_sets, async () => {
+    await db.session_sets.clear();
+    await db.sessions.clear();
+    await db.workout_exercises.clear();
+    await db.workouts.clear();
+    await db.exercises.clear();
+  });
+
+  if (typeof window !== 'undefined') {
+    localStorage.removeItem('gymapp_workout_order_pwa');
+    localStorage.removeItem('active-workout-storage');
+    localStorage.removeItem('gymapp_dummy_workouts_seeded_1year_v3');
+  }
+
+  // Re-seed initial canonical Workout A and Workout B routines
+  await restoreOriginalWorkouts();
+};
+
