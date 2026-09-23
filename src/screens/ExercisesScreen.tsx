@@ -1,16 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { Exercise } from '../types';
-import { fetchExercises, insertExercise, updateExercise, deleteExercise } from '../db/db';
+import { fetchExercises, insertExercise, updateExercise, deleteExercise, fetchAllWorkoutSessionRecords } from '../db/db';
+import { useSettingsStore } from '../store/useSettingsStore';
 import { Typography } from '../components/atoms/Typography';
 import { Button } from '../components/atoms/Button';
 import { Card } from '../components/atoms/Card';
 import { Badge } from '../components/atoms/Badge';
 import { Modal } from '../components/atoms/Modal';
 import { ExerciseFormModal } from '../components/organisms/ExerciseFormModal';
-import { Plus, Search, Edit2, Trash2, Library, Dumbbell } from 'lucide-react';
+import { ProgressiveOverloadChart } from '../components/organisms/ProgressiveOverloadChart';
+import { WorkoutSessionRecord } from '../utils/progressiveOverload';
+import { Plus, Search, Edit2, Trash2, Library, Dumbbell, TrendingUp } from 'lucide-react';
 
 export const ExercisesScreen: React.FC = () => {
+  const { unit } = useSettingsStore();
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [sessionRecords, setSessionRecords] = useState<WorkoutSessionRecord[]>([]);
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [loading, setLoading] = useState(true);
@@ -19,18 +24,24 @@ export const ExercisesScreen: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [exerciseToEdit, setExerciseToEdit] = useState<Exercise | null>(null);
   const [exerciseToDelete, setExerciseToDelete] = useState<Exercise | null>(null);
+  const [exerciseForChart, setExerciseForChart] = useState<Exercise | null>(null);
 
   const loadData = async () => {
     try {
       setLoading(true);
-      const data = await fetchExercises();
+      const [data, records] = await Promise.all([
+        fetchExercises(),
+        fetchAllWorkoutSessionRecords(unit),
+      ]);
       setExercises(data);
+      setSessionRecords(records);
     } catch (err) {
       console.error('Failed to load exercises:', err);
     } finally {
       setLoading(false);
     }
   };
+
 
   useEffect(() => {
     loadData();
@@ -182,6 +193,15 @@ export const ExercisesScreen: React.FC = () => {
               <div style={{ display: 'flex', gap: '4px' }}>
                 <button
                   type="button"
+                  onClick={() => setExerciseForChart(ex)}
+                  className="btn btn-secondary btn-icon"
+                  style={{ width: '32px', height: '32px', color: 'var(--accent)' }}
+                  title="View Progressive Overload Chart"
+                >
+                  <TrendingUp size={14} />
+                </button>
+                <button
+                  type="button"
                   onClick={() => {
                     setExerciseToEdit(ex);
                     setIsModalOpen(true);
@@ -206,6 +226,27 @@ export const ExercisesScreen: React.FC = () => {
           ))}
         </div>
       )}
+
+      {/* Progressive Overload Progression Modal */}
+      <Modal
+        isOpen={Boolean(exerciseForChart)}
+        onClose={() => setExerciseForChart(null)}
+        position="center"
+        maxWidth="620px"
+      >
+        <ProgressiveOverloadChart
+          records={sessionRecords}
+          defaultExerciseId={String(exerciseForChart?.id ?? exerciseForChart?.name ?? '')}
+          unit={unit}
+          title={exerciseForChart ? `${exerciseForChart.name} Overload` : undefined}
+          style={{ border: 'none', padding: '0', background: 'transparent', boxShadow: 'none' }}
+        />
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+          <Button variant="secondary" onClick={() => setExerciseForChart(null)}>
+            Close
+          </Button>
+        </div>
+      </Modal>
 
       {/* Form Modal */}
       <ExerciseFormModal
@@ -243,3 +284,4 @@ export const ExercisesScreen: React.FC = () => {
     </div>
   );
 };
+

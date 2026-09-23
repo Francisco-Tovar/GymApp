@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Workout, Exercise } from '../types';
-import { fetchWorkouts, fetchExercises, deleteWorkout, insertWorkout, updateWorkout } from '../db/db';
+import { fetchWorkouts, fetchExercises, deleteWorkout, insertWorkout, updateWorkout, restoreOriginalWorkouts } from '../db/db';
+import { cleanupFullBodyRoutine } from '../db/seedDummyData';
 import { useActiveWorkoutStore } from '../store/useActiveWorkoutStore';
 import { Typography } from '../components/atoms/Typography';
 import { Button } from '../components/atoms/Button';
@@ -52,6 +53,7 @@ export const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({
   const loadData = async () => {
     try {
       setLoading(true);
+      await restoreOriginalWorkouts();
       const [wList, eList] = await Promise.all([fetchWorkouts(), fetchExercises()]);
       const savedOrder = getSavedOrder();
 
@@ -110,10 +112,15 @@ export const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({
   };
 
   const confirmDelete = async () => {
-    if (!deletingWorkout) return;
-    await deleteWorkout(deletingWorkout.id);
-    setDeletingWorkout(null);
-    await loadData();
+    if (!deletingWorkout || !deletingWorkout.id) return;
+    try {
+      await deleteWorkout(Number(deletingWorkout.id));
+    } catch (err) {
+      console.error('Failed to delete workout:', err);
+    } finally {
+      setDeletingWorkout(null);
+      await loadData();
+    }
   };
 
   return (

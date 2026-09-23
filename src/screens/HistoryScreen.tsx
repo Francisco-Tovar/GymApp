@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Session, SessionSet } from '../types';
-import { fetchSessionsHistory, deleteSession, fetchSessionSetsDetail } from '../db/db';
+import { fetchSessionsHistory, deleteSession, fetchSessionSetsDetail, fetchAllWorkoutSessionRecords, seedDummyWorkouts } from '../db/db';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { convertWeight } from '../utils/unitConversion';
 import { Typography } from '../components/atoms/Typography';
@@ -8,11 +8,15 @@ import { Button } from '../components/atoms/Button';
 import { Card } from '../components/atoms/Card';
 import { Badge } from '../components/atoms/Badge';
 import { Modal } from '../components/atoms/Modal';
-import { Calendar, Trash2, ChevronDown, ChevronRight, History, CheckCircle2 } from 'lucide-react';
+import { ProgressiveOverloadChart } from '../components/organisms/ProgressiveOverloadChart';
+import { WorkoutSessionRecord } from '../utils/progressiveOverload';
+import { Calendar, Trash2, ChevronDown, ChevronRight, History, CheckCircle2, TrendingUp, ListFilter } from 'lucide-react';
 
 export const HistoryScreen: React.FC = () => {
   const { unit } = useSettingsStore();
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [sessionRecords, setSessionRecords] = useState<WorkoutSessionRecord[]>([]);
+  const [viewMode, setViewMode] = useState<'analytics' | 'logs'>('analytics');
   const [loading, setLoading] = useState(true);
   const [expandedSessionId, setExpandedSessionId] = useState<number | null>(null);
   const [sessionSetsMap, setSessionSetsMap] = useState<Record<number, SessionSet[]>>({});
@@ -21,8 +25,13 @@ export const HistoryScreen: React.FC = () => {
   const loadHistory = async () => {
     try {
       setLoading(true);
-      const data = await fetchSessionsHistory();
+      await seedDummyWorkouts();
+      const [data, records] = await Promise.all([
+        fetchSessionsHistory(),
+        fetchAllWorkoutSessionRecords(unit),
+      ]);
       setSessions(data);
+      setSessionRecords(records);
     } catch (err) {
       console.error('Failed to load history:', err);
     } finally {
@@ -32,7 +41,8 @@ export const HistoryScreen: React.FC = () => {
 
   useEffect(() => {
     loadHistory();
-  }, []);
+  }, [unit]);
+
 
   const toggleExpand = async (sessionId: number) => {
     if (expandedSessionId === sessionId) {
@@ -84,12 +94,76 @@ export const HistoryScreen: React.FC = () => {
         </Typography>
       </div>
 
+      {/* Sub-tab view switch */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          backgroundColor: 'var(--bg-surface)',
+          padding: '4px',
+          borderRadius: 'var(--radius-md)',
+          border: '1px solid var(--border-color)',
+          gap: '4px',
+          marginBottom: '16px',
+        }}
+      >
+        <button
+          type="button"
+          onClick={() => setViewMode('analytics')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            padding: '8px 12px',
+            borderRadius: 'var(--radius-sm)',
+            border: 'none',
+            fontSize: '13px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            backgroundColor: viewMode === 'analytics' ? 'var(--primary)' : 'transparent',
+            color: viewMode === 'analytics' ? '#ffffff' : 'var(--text-muted)',
+            boxShadow: viewMode === 'analytics' ? '0 2px 8px var(--primary-glow)' : 'none',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <TrendingUp size={15} />
+          <span>Overload Analytics</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setViewMode('logs')}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '8px',
+            padding: '8px 12px',
+            borderRadius: 'var(--radius-sm)',
+            border: 'none',
+            fontSize: '13px',
+            fontWeight: 700,
+            cursor: 'pointer',
+            backgroundColor: viewMode === 'logs' ? 'var(--primary)' : 'transparent',
+            color: viewMode === 'logs' ? '#ffffff' : 'var(--text-muted)',
+            boxShadow: viewMode === 'logs' ? '0 2px 8px var(--primary-glow)' : 'none',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <ListFilter size={15} />
+          <span>Workout Logs ({sessions.length})</span>
+        </button>
+      </div>
+
       {loading ? (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <Typography variant="body" color="var(--text-muted)">
             Loading logs...
           </Typography>
         </div>
+      ) : viewMode === 'analytics' ? (
+        <ProgressiveOverloadChart records={sessionRecords} unit={unit} />
       ) : sessions.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <History size={48} style={{ color: 'var(--text-subtle)', marginBottom: '12px' }} />
