@@ -1,10 +1,10 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import { Exercise, SessionSet, WeightUnit } from '../../types';
+import React, { useState } from 'react';
+import { View, StyleSheet, TouchableOpacity } from 'react-native';
+import { Exercise, WeightUnit } from '../../types';
 import { Card } from '../atoms/Card';
 import { Typography } from '../atoms/Typography';
-import { Button } from '../atoms/Button';
 import { Badge } from '../atoms/Badge';
+import { Button } from '../atoms/Button';
 import { SetInputRow } from '../molecules/SetInputRow';
 
 export interface LocalSetState {
@@ -38,17 +38,42 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
   canMoveUp = false,
   canMoveDown = false,
 }) => {
+  const [collapsed, setCollapsed] = useState(false);
+
   const muscleList = exercise.muscle_groups
     ? exercise.muscle_groups.split(',').map((m) => m.trim())
     : [];
 
+  const totalReps = sets.reduce((sum, s) => sum + (parseInt(s.reps, 10) || 0), 0);
+
   return (
     <Card style={styles.card}>
-      <View style={styles.header}>
-        <View style={styles.headerTitleRow}>
+      <View style={styles.headerRow}>
+        <TouchableOpacity
+          onPress={() => setCollapsed(!collapsed)}
+          activeOpacity={0.7}
+          style={styles.headerLeft}
+        >
           <Typography variant="h3" color="#F8FAFC" style={styles.exerciseName}>
             {exercise.name}
           </Typography>
+
+          {collapsed ? (
+            <View style={styles.collapsedSummary}>
+              <Typography variant="caption" color="#94A3B8">
+                {sets.length} set{sets.length !== 1 ? 's' : ''} · {totalReps} total reps
+              </Typography>
+            </View>
+          ) : (
+            <View style={styles.badges}>
+              {muscleList.map((m, idx) => (
+                <Badge key={idx} label={m} variant="primary" />
+              ))}
+            </View>
+          )}
+        </TouchableOpacity>
+
+        <View style={styles.headerRightControls}>
           <View style={styles.reorderControls}>
             {onMoveUp ? (
               <Button
@@ -73,36 +98,44 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
               />
             ) : null}
           </View>
-        </View>
-        <View style={styles.badges}>
-          {muscleList.map((m, idx) => (
-            <Badge key={idx} label={m} variant="primary" />
-          ))}
+          <TouchableOpacity
+            onPress={() => setCollapsed(!collapsed)}
+            activeOpacity={0.7}
+            style={styles.togglePill}
+          >
+            <Typography variant="caption" color="#6366F1" bold>
+              {collapsed ? '▼' : '▲'}
+            </Typography>
+          </TouchableOpacity>
         </View>
       </View>
 
-      <View style={styles.setList}>
-        {sets.map((item, index) => (
-          <SetInputRow
-            key={item.id}
-            setNumber={index + 1}
-            weight={item.weight}
-            reps={item.reps}
-            unit={unit}
-            onUpdateWeight={(val) => onUpdateSet(index, 'weight', val)}
-            onUpdateReps={(val) => onUpdateSet(index, 'reps', val)}
-            onRemoveSet={() => onRemoveSet(index)}
+      {!collapsed && (
+        <>
+          <View style={styles.setList}>
+            {sets.map((item, index) => (
+              <SetInputRow
+                key={item.id}
+                setNumber={index + 1}
+                weight={item.weight}
+                reps={item.reps}
+                unit={unit}
+                onUpdateWeight={(val) => onUpdateSet(index, 'weight', val)}
+                onUpdateReps={(val) => onUpdateSet(index, 'reps', val)}
+                onRemoveSet={() => onRemoveSet(index)}
+              />
+            ))}
+          </View>
+
+          <Button
+            title="+ Add Set"
+            variant="secondary"
+            size="small"
+            onPress={onAddSet}
+            style={styles.addBtn}
           />
-        ))}
-      </View>
-
-      <Button
-        title="+ Add Set"
-        variant="secondary"
-        size="small"
-        onPress={onAddSet}
-        style={styles.addBtn}
-      />
+        </>
+      )}
     </Card>
   );
 };
@@ -111,17 +144,23 @@ const styles = StyleSheet.create({
   card: {
     marginBottom: 16,
   },
-  header: {
-    marginBottom: 12,
-  },
-  headerTitleRow: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    marginBottom: 8,
   },
-  exerciseName: {
+  headerLeft: {
     flex: 1,
     marginRight: 8,
+  },
+  exerciseName: {
+    marginBottom: 2,
+  },
+  headerRightControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   reorderControls: {
     flexDirection: 'row',
@@ -135,10 +174,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  togglePill: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: '#1E293B',
+    borderWidth: 1,
+    borderColor: '#334155',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   badges: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     marginTop: 6,
+  },
+  collapsedSummary: {
+    marginTop: 4,
   },
   setList: {
     marginVertical: 4,

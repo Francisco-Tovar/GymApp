@@ -145,14 +145,19 @@ const seedInitialData = async (db: SQLite.SQLiteDatabase): Promise<void> => {
     }
 
     if (workoutId) {
-      await db.runAsync('DELETE FROM workout_exercises WHERE workout_id = ?;', [workoutId]);
-      for (const exName of w.exerciseNames) {
-        const exId = exerciseIdMap[exName];
-        if (exId) {
-          await db.runAsync(
-            'INSERT INTO workout_exercises (workout_id, exercise_id) VALUES (?, ?);',
-            [workoutId, exId]
-          );
+      const existingWe = await db.getAllAsync<{ id: number }>(
+        'SELECT id FROM workout_exercises WHERE workout_id = ?;',
+        [workoutId]
+      );
+      if (!existingWe || existingWe.length === 0) {
+        for (const exName of w.exerciseNames) {
+          const exId = exerciseIdMap[exName];
+          if (exId) {
+            await db.runAsync(
+              'INSERT INTO workout_exercises (workout_id, exercise_id) VALUES (?, ?);',
+              [workoutId, exId]
+            );
+          }
         }
       }
     }

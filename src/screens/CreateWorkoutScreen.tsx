@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { ScreenLayout } from '../components/templates/ScreenLayout';
 import { WorkoutBuilderForm } from '../components/organisms/WorkoutBuilderForm';
@@ -9,10 +9,12 @@ import { fetchExercises, insertWorkout, updateWorkout, fetchWorkoutById } from '
 export const CreateWorkoutScreen: React.FC = () => {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const workoutId = route.params?.workoutId;
+  const rawWorkoutId = route.params?.workoutId;
+  const workoutId = rawWorkoutId !== undefined && rawWorkoutId !== null ? Number(rawWorkoutId) : null;
 
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [existingWorkout, setExistingWorkout] = useState<Workout | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     loadData();
@@ -20,6 +22,7 @@ export const CreateWorkoutScreen: React.FC = () => {
 
   const loadData = async () => {
     try {
+      setLoading(true);
       const exData = await fetchExercises();
       setExercises(exData);
 
@@ -31,16 +34,23 @@ export const CreateWorkoutScreen: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to load data for workout screen:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSave = async (name: string, exerciseIds: number[]) => {
-    if (workoutId) {
-      await updateWorkout(workoutId, name, exerciseIds);
-    } else {
-      await insertWorkout(name, exerciseIds);
+    try {
+      if (workoutId) {
+        await updateWorkout(workoutId, name, exerciseIds);
+      } else {
+        await insertWorkout(name, exerciseIds);
+      }
+      navigation.goBack();
+    } catch (err) {
+      console.error('Failed to save workout:', err);
+      throw err;
     }
-    navigation.goBack();
   };
 
   const isEditing = Boolean(workoutId);
@@ -52,13 +62,20 @@ export const CreateWorkoutScreen: React.FC = () => {
       showUnitToggle={false}
     >
       <View style={styles.container}>
-        <WorkoutBuilderForm
-          exercises={exercises}
-          initialName={existingWorkout?.name || ''}
-          initialSelectedIds={existingWorkout?.exercise_ids || []}
-          onSubmit={handleSave}
-          onCancel={() => navigation.goBack()}
-        />
+        {loading ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color="#6366F1" />
+          </View>
+        ) : (
+          <WorkoutBuilderForm
+            key={workoutId ? `edit-${workoutId}` : 'new-workout'}
+            exercises={exercises}
+            initialName={existingWorkout?.name || ''}
+            initialSelectedIds={existingWorkout?.exercise_ids || []}
+            onSubmit={handleSave}
+            onCancel={() => navigation.goBack()}
+          />
+        )}
       </View>
     </ScreenLayout>
   );
@@ -68,5 +85,11 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     padding: 16,
+  },
+  loadingBox: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 60,
   },
 });

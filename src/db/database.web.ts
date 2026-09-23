@@ -7,6 +7,93 @@ export interface WebDatabase {
   runAsync(sql: string, params?: any[]): Promise<{ lastInsertRowId: number }>;
 }
 
+const DB_STORAGE_KEY = 'gymapp_sqlite_web_data_v2';
+const TABLE_NAMES = ['exercises', 'workouts', 'workout_exercises', 'sessions', 'session_sets'];
+
+export const saveToStorage = () => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const dump: Record<string, any[]> = {};
+      for (const table of TABLE_NAMES) {
+        try {
+          const rows = alasql(`SELECT * FROM ${table}`);
+          dump[table] = Array.isArray(rows) ? rows : [];
+        } catch (e) {
+          dump[table] = [];
+        }
+      }
+      window.localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(dump));
+    }
+  } catch (err) {
+    console.error('Failed to persist web database:', err);
+  }
+};
+
+export const loadFromStorage = (): boolean => {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const raw = window.localStorage.getItem(DB_STORAGE_KEY);
+      if (raw) {
+        const dump = JSON.parse(raw);
+        let hasData = false;
+
+        if (Array.isArray(dump.exercises) && dump.exercises.length > 0) {
+          alasql('DELETE FROM exercises;');
+          for (const row of dump.exercises) {
+            alasql('INSERT INTO exercises (id, name, muscle_groups) VALUES (?, ?, ?);', [row.id, row.name, row.muscle_groups]);
+          }
+          hasData = true;
+        }
+
+        if (Array.isArray(dump.workouts) && dump.workouts.length > 0) {
+          alasql('DELETE FROM workouts;');
+          for (const row of dump.workouts) {
+            alasql('INSERT INTO workouts (id, name) VALUES (?, ?);', [row.id, row.name]);
+          }
+          hasData = true;
+        }
+
+        if (Array.isArray(dump.workout_exercises) && dump.workout_exercises.length > 0) {
+          alasql('DELETE FROM workout_exercises;');
+          for (const row of dump.workout_exercises) {
+            alasql('INSERT INTO workout_exercises (id, workout_id, exercise_id) VALUES (?, ?, ?);', [row.id || 0, row.workout_id, row.exercise_id]);
+          }
+          hasData = true;
+        }
+
+        if (Array.isArray(dump.sessions) && dump.sessions.length > 0) {
+          alasql('DELETE FROM sessions;');
+          for (const row of dump.sessions) {
+            alasql('INSERT INTO sessions (id, workout_id, date) VALUES (?, ?, ?);', [row.id, row.workout_id, row.date]);
+          }
+          hasData = true;
+        }
+
+        if (Array.isArray(dump.session_sets) && dump.session_sets.length > 0) {
+          alasql('DELETE FROM session_sets;');
+          for (const row of dump.session_sets) {
+            alasql('INSERT INTO session_sets (id, session_id, exercise_id, set_number, weight, reps, unit) VALUES (?, ?, ?, ?, ?, ?, ?);', [
+              row.id,
+              row.session_id,
+              row.exercise_id,
+              row.set_number,
+              row.weight,
+              row.reps,
+              row.unit,
+            ]);
+          }
+          hasData = true;
+        }
+
+        return hasData;
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load web database from storage:', err);
+  }
+  return false;
+};
+
 let dbInstance: WebDatabase | null = null;
 
 export const getDB = async (): Promise<WebDatabase> => {
@@ -21,19 +108,16 @@ export const getDB = async (): Promise<WebDatabase> => {
 
       for (const stmt of statements) {
         try {
-          // Normalize SQLite types for Alasql
           let normalizedStmt = stmt
             .replace(/INTEGER PRIMARY KEY AUTOINCREMENT/gi, 'INT AUTO_INCREMENT PRIMARY KEY')
             .replace(/INTEGER PRIMARY KEY/gi, 'INT AUTO_INCREMENT PRIMARY KEY')
             .replace(/REAL/gi, 'FLOAT')
             .replace(/TEXT/gi, 'STRING');
 
-          // Strip FOREIGN KEY constraints if alasql parse error occurs
           if (normalizedStmt.toUpperCase().includes('FOREIGN KEY')) {
             const lines = normalizedStmt.split('\n');
             const filteredLines = lines.filter((l) => !l.toUpperCase().includes('FOREIGN KEY'));
             normalizedStmt = filteredLines.join('\n');
-            // Fix trailing comma if any line ends with comma before closing parenthesis
             normalizedStmt = normalizedStmt.replace(/,\s*\)/g, '\n)');
           }
 
@@ -42,6 +126,7 @@ export const getDB = async (): Promise<WebDatabase> => {
           console.warn('Alasql exec statement error:', err, stmt);
         }
       }
+      saveToStorage();
     },
 
     async getFirstAsync<T = any>(sql: string, params?: any[]): Promise<T | null> {
@@ -86,6 +171,7 @@ export const getDB = async (): Promise<WebDatabase> => {
             lastInsertRowId = Number(maxRes[0].maxId);
           }
         }
+        saveToStorage();
         return { lastInsertRowId };
       } catch (err) {
         console.error('Alasql runAsync error:', err, sql);
@@ -113,6 +199,7 @@ export const initDatabase = async (): Promise<void> => {
     );
 
     CREATE TABLE IF NOT EXISTS workout_exercises (
+      id INT AUTO_INCREMENT PRIMARY KEY,
       workout_id INT NOT NULL,
       exercise_id INT NOT NULL
     );
@@ -134,7 +221,15 @@ export const initDatabase = async (): Promise<void> => {
     );
   `);
 
-  await seedInitialData(db);
+  const hasLoaded = loadFromStorage();
+
+  const existingExercises = await db.getAllAsync<{ id: number }>('SELECT id FROM exercises;');
+  const existingWorkouts = await db.getAllAsync<{ id: number }>('SELECT id FROM workouts;');
+
+  if (!hasLoaded || existingExercises.length === 0 || existingWorkouts.length === 0) {
+    await seedInitialData(db);
+    saveToStorage();
+  }
 };
 
 const INITIAL_EXERCISES = [
@@ -197,10 +292,6 @@ const INITIAL_TODAY_SESSION = {
 };
 
 const seedInitialData = async (db: WebDatabase): Promise<void> => {
-  // Clear old placeholder workouts & deadlift placeholder if present
-  await db.runAsync("DELETE FROM workouts WHERE name IN ('Push Day', 'Leg & Pull Focus');");
-  await db.runAsync("DELETE FROM exercises WHERE name = 'Deadlift';");
-
   const exerciseIdMap: Record<string, number> = {};
 
   for (const ex of INITIAL_EXERCISES) {
@@ -226,22 +317,27 @@ const seedInitialData = async (db: WebDatabase): Promise<void> => {
     }
 
     if (workoutId) {
-      await db.runAsync('DELETE FROM workout_exercises WHERE workout_id = ?;', [workoutId]);
-      for (const exName of w.exerciseNames) {
-        const exId = exerciseIdMap[exName];
-        if (exId) {
-          await db.runAsync(
-            'INSERT INTO workout_exercises (workout_id, exercise_id) VALUES (?, ?);',
-            [workoutId, exId]
-          );
+      const existingWe = await db.getAllAsync<{ id: number }>(
+        'SELECT id FROM workout_exercises WHERE workout_id = ?;',
+        [workoutId]
+      );
+      if (!existingWe || existingWe.length === 0) {
+        for (const exName of w.exerciseNames) {
+          const exId = exerciseIdMap[exName];
+          if (exId) {
+            await db.runAsync(
+              'INSERT INTO workout_exercises (workout_id, exercise_id) VALUES (?, ?);',
+              [workoutId, exId]
+            );
+          }
         }
       }
     }
   }
 
   // Seed today's session if history is empty
-  const sessionCheck = await db.getFirstAsync<{ count: number }>('SELECT COUNT(id) as count FROM sessions;');
-  if (!sessionCheck || Number(sessionCheck.count) === 0) {
+  const sessionCheck = await db.getAllAsync<{ id: number }>('SELECT id FROM sessions;');
+  if (!sessionCheck || sessionCheck.length === 0) {
     const workout = await db.getFirstAsync<{ id: number }>('SELECT id FROM workouts WHERE name = ?;', [INITIAL_TODAY_SESSION.workoutName]);
     if (workout) {
       const res = await db.runAsync('INSERT INTO sessions (workout_id, date) VALUES (?, ?);', [workout.id, INITIAL_TODAY_SESSION.date]);

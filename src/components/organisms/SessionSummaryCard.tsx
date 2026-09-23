@@ -5,6 +5,8 @@ import { Card } from '../atoms/Card';
 import { Typography } from '../atoms/Typography';
 import { Badge } from '../atoms/Badge';
 import { fetchSessionSetsDetail } from '../../db/crud';
+import { useSettingsStore } from '../../store/useSettingsStore';
+import { convertWeight } from '../../utils/unitConversion';
 
 interface SessionSummaryCardProps {
   session: Session;
@@ -12,6 +14,7 @@ interface SessionSummaryCardProps {
 }
 
 export const SessionSummaryCard: React.FC<SessionSummaryCardProps> = ({ session, onDelete }) => {
+  const { unit } = useSettingsStore();
   const [expanded, setExpanded] = useState(false);
   const [sets, setSets] = useState<SessionSet[]>([]);
   const [loading, setLoading] = useState(false);
@@ -94,16 +97,19 @@ export const SessionSummaryCard: React.FC<SessionSummaryCardProps> = ({ session,
                 <Typography variant="body" bold color="#818CF8" style={styles.exTitle}>
                   {exName}
                 </Typography>
-                {setList.map((s) => (
-                  <View key={s.id} style={styles.setRow}>
-                    <Typography variant="caption" color="#CBD5E1">
-                      Set {s.set_number}:
-                    </Typography>
-                    <Typography variant="caption" bold color="#F8FAFC" style={styles.setData}>
-                      {s.weight} {s.unit} × {s.reps} reps
-                    </Typography>
-                  </View>
-                ))}
+                  {setList.map((s) => {
+                    const displayWeight = convertWeight(s.weight, (s.unit as any) || 'lb', unit);
+                    return (
+                      <View key={s.id} style={styles.setRow}>
+                        <Typography variant="caption" color="#CBD5E1">
+                          Set {s.set_number}:
+                        </Typography>
+                        <Typography variant="caption" bold color="#F8FAFC" style={styles.setData}>
+                          {displayWeight} {unit} × {s.reps} reps
+                        </Typography>
+                      </View>
+                    );
+                  })}
               </View>
             ))
           )}

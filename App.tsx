@@ -12,6 +12,7 @@ import { ActiveSessionScreen } from './src/screens/ActiveSessionScreen';
 import { ExercisesScreen } from './src/screens/ExercisesScreen';
 import { HistoryScreen } from './src/screens/HistoryScreen';
 import { Typography } from './src/components/atoms/Typography';
+import { useActiveWorkoutStore } from './src/store/useActiveWorkoutStore';
 
 const Tab = createBottomTabNavigator();
 const WorkoutsStack = createNativeStackNavigator();
@@ -96,6 +97,18 @@ export default function App() {
           <Tab.Screen
             name="WorkoutsTab"
             component={WorkoutsStackNavigator}
+            listeners={({ navigation }) => ({
+              tabPress: (e) => {
+                const { isActive, workoutId, workoutName } = useActiveWorkoutStore.getState();
+                if (isActive && workoutId) {
+                  e.preventDefault();
+                  navigation.navigate('WorkoutsTab', {
+                    screen: 'ActiveSession',
+                    params: { workoutId, workoutName },
+                  });
+                }
+              },
+            })}
             options={{
               tabBarLabel: 'Workouts',
               tabBarIcon: ({ color }) => (

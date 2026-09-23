@@ -8,6 +8,7 @@ export interface BodyMuscleMapProps {
   selectedMuscleGroups: string[]; // e.g. ['Chest', 'Quadriceps, Glutes', 'Biceps']
   title?: string;
   collapsible?: boolean;
+  defaultCollapsed?: boolean;
 }
 
 // Normalize muscle names to internal keys
@@ -40,8 +41,9 @@ export const BodyMuscleMap: React.FC<BodyMuscleMapProps> = ({
   selectedMuscleGroups,
   title = 'Muscle Group Heatmap',
   collapsible = true,
+  defaultCollapsed = false,
 }) => {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(defaultCollapsed);
   const [activeView, setActiveView] = useState<'both' | 'front' | 'back'>('both');
 
   // Compute active muscle key counts
@@ -104,7 +106,7 @@ export const BodyMuscleMap: React.FC<BodyMuscleMapProps> = ({
 
         {collapsible ? (
           <Typography variant="caption" color="#6366F1" bold>
-            {collapsed ? '▼ Show Anatomy' : '▲ Hide Anatomy'}
+            {collapsed ? '▼ Show' : '▲ Hide'}
           </Typography>
         ) : null}
       </TouchableOpacity>

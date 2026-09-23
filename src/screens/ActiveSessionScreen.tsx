@@ -1,17 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Modal, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert, Modal } from 'react-native';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { ScreenLayout } from '../components/templates/ScreenLayout';
-import { ActiveSetLogger, LocalSetState } from '../components/organisms/ActiveSetLogger';
+import { ActiveSetLogger } from '../components/organisms/ActiveSetLogger';
+import { BodyMuscleMap } from '../components/organisms/BodyMuscleMap';
 import { Typography } from '../components/atoms/Typography';
 import { Button } from '../components/atoms/Button';
 import { useSettingsStore } from '../store/useSettingsStore';
-import { Exercise, SessionSet } from '../types';
+import { useActiveWorkoutStore, ExerciseSetsMap } from '../store/useActiveWorkoutStore';
+import { SessionSet } from '../types';
 import { fetchWorkoutById, saveCompletedSession, fetchHeaviestWeightsMap } from '../db/crud';
-
-interface ExerciseSetsMap {
-  [exerciseId: number]: LocalSetState[];
-}
 
 export const ActiveSessionScreen: React.FC = () => {
   const route = useRoute<any>();
@@ -20,25 +18,50 @@ export const ActiveSessionScreen: React.FC = () => {
 
   const { workoutId, workoutName } = route.params || {};
 
-  const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [exerciseSetsMap, setExerciseSetsMap] = useState<ExerciseSetsMap>({});
-  const [currentDate] = useState(new Date().toISOString());
+  const {
+    isActive,
+    workoutId: activeWorkoutId,
+    workoutName: activeWorkoutName,
+    exercises,
+    exerciseSetsMap,
+    currentDate,
+    unit: activeUnit,
+    startWorkout,
+    addSet,
+    removeSet,
+    updateSet,
+    moveExerciseUp,
+    moveExerciseDown,
+    convertUnit,
+    clearActiveWorkout,
+  } = useActiveWorkoutStore();
+
   const [loading, setLoading] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
 
+  // Sync unit changes from global settings to active workout weights
+  useEffect(() => {
+    if (isActive && unit !== activeUnit) {
+      convertUnit(unit);
+    }
+  }, [unit, isActive, activeUnit]);
+
+  // Load workout details if starting new or switching
   useEffect(() => {
     if (workoutId) {
-      loadWorkoutDetails();
+      if (!isActive || activeWorkoutId !== workoutId) {
+        initWorkoutSession();
+      }
     }
   }, [workoutId]);
 
-  const loadWorkoutDetails = async () => {
+  const initWorkoutSession = async () => {
     try {
+      setLoading(true);
       const workout = await fetchWorkoutById(workoutId);
       if (workout && workout.exercises) {
-        setExercises(workout.exercises);
         const exerciseIds = workout.exercises.map((e) => e.id);
-        const maxWeightsMap = await fetchHeaviestWeightsMap(exerciseIds);
+        const maxWeightsMap = await fetchHeaviestWeightsMap(exerciseIds, unit);
 
         const initialMap: ExerciseSetsMap = {};
         workout.exercises.forEach((ex) => {
@@ -46,82 +69,20 @@ export const ActiveSessionScreen: React.FC = () => {
           const initialWeight = maxW !== undefined && maxW > 0 ? maxW.toString() : '0';
           initialMap[ex.id] = [{ id: '1', weight: initialWeight, reps: '0' }];
         });
-        setExerciseSetsMap(initialMap);
+
+        startWorkout(
+          workoutId,
+          workoutName || workout.name || 'Active Workout',
+          workout.exercises,
+          initialMap,
+          unit
+        );
       }
     } catch (err) {
       console.error('Failed to load workout exercises:', err);
+    } finally {
+      setLoading(false);
     }
-  };
-
-  const handleAddSet = (exerciseId: number) => {
-    setExerciseSetsMap((prev) => {
-      const currentSets = prev[exerciseId] || [];
-      const lastWeight = currentSets.length > 0 ? currentSets[currentSets.length - 1].weight : '0';
-      const newSet: LocalSetState = {
-        id: (currentSets.length + 1).toString() + '-' + Date.now(),
-        weight: lastWeight,
-        reps: '0',
-      };
-      return {
-        ...prev,
-        [exerciseId]: [...currentSets, newSet],
-      };
-    });
-  };
-
-  const handleRemoveSet = (exerciseId: number, index: number) => {
-    setExerciseSetsMap((prev) => {
-      const currentSets = prev[exerciseId] || [];
-      const updated = currentSets.filter((_, i) => i !== index);
-      return {
-        ...prev,
-        [exerciseId]: updated,
-      };
-    });
-  };
-
-  const handleUpdateSet = (
-    exerciseId: number,
-    index: number,
-    field: 'weight' | 'reps',
-    value: string
-  ) => {
-    setExerciseSetsMap((prev) => {
-      const currentSets = prev[exerciseId] || [];
-      const updated = [...currentSets];
-      if (updated[index]) {
-        updated[index] = {
-          ...updated[index],
-          [field]: value,
-        };
-      }
-      return {
-        ...prev,
-        [exerciseId]: updated,
-      };
-    });
-  };
-
-  const handleMoveExerciseUp = (index: number) => {
-    if (index <= 0) return;
-    setExercises((prev) => {
-      const updated = [...prev];
-      const temp = updated[index];
-      updated[index] = updated[index - 1];
-      updated[index - 1] = temp;
-      return updated;
-    });
-  };
-
-  const handleMoveExerciseDown = (index: number) => {
-    if (index >= exercises.length - 1) return;
-    setExercises((prev) => {
-      const updated = [...prev];
-      const temp = updated[index];
-      updated[index] = updated[index + 1];
-      updated[index + 1] = temp;
-      return updated;
-    });
   };
 
   const handleFinishWorkout = async () => {
@@ -151,7 +112,8 @@ export const ActiveSessionScreen: React.FC = () => {
 
     try {
       setLoading(true);
-      await saveCompletedSession(workoutId, currentDate, sessionSets);
+      await saveCompletedSession(workoutId || activeWorkoutId, currentDate, sessionSets);
+      clearActiveWorkout();
       navigation.navigate('HistoryTab');
     } catch (err) {
       console.error('Failed to save session:', err);
@@ -161,22 +123,42 @@ export const ActiveSessionScreen: React.FC = () => {
     }
   };
 
-  const formattedDate = new Date(currentDate).toLocaleDateString(undefined, {
+  const handleDiscard = () => {
+    setShowCancelModal(false);
+    clearActiveWorkout();
+    navigation.navigate('WorkoutsList');
+  };
+
+  const formattedDate = new Date(currentDate || Date.now()).toLocaleDateString(undefined, {
     weekday: 'long',
     month: 'short',
     day: 'numeric',
   });
 
+  const selectedMuscleGroups = exercises.map((ex) => ex.muscle_groups);
+
   return (
     <ScreenLayout
-      title={workoutName || 'Active Workout'}
+      title={activeWorkoutName || workoutName || 'Active Workout'}
       subtitle={`Session Date: ${formattedDate}`}
       showUnitToggle
     >
       <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
+        {/* Muscle Group Anatomy Heatmap - collapsed by default */}
+        {exercises.length > 0 && (
+          <View style={styles.anatomySection}>
+            <BodyMuscleMap
+              selectedMuscleGroups={selectedMuscleGroups}
+              title="Muscle Coverage"
+              collapsible
+              defaultCollapsed={true}
+            />
+          </View>
+        )}
+
         {exercises.length === 0 ? (
           <Typography variant="body" color="#94A3B8" align="center" style={styles.emptyText}>
-            No exercises assigned to this workout routine yet.
+            {loading ? 'Loading workout...' : 'No exercises assigned to this workout routine yet.'}
           </Typography>
         ) : (
           exercises.map((ex, idx) => (
@@ -185,11 +167,11 @@ export const ActiveSessionScreen: React.FC = () => {
               exercise={ex}
               sets={exerciseSetsMap[ex.id] || []}
               unit={unit}
-              onAddSet={() => handleAddSet(ex.id)}
-              onRemoveSet={(index) => handleRemoveSet(ex.id, index)}
-              onUpdateSet={(index, field, value) => handleUpdateSet(ex.id, index, field, value)}
-              onMoveUp={() => handleMoveExerciseUp(idx)}
-              onMoveDown={() => handleMoveExerciseDown(idx)}
+              onAddSet={() => addSet(ex.id)}
+              onRemoveSet={(index) => removeSet(ex.id, index)}
+              onUpdateSet={(index, field, value) => updateSet(ex.id, index, field, value)}
+              onMoveUp={() => moveExerciseUp(idx)}
+              onMoveDown={() => moveExerciseDown(idx)}
               canMoveUp={idx > 0}
               canMoveDown={idx < exercises.length - 1}
             />
@@ -236,10 +218,7 @@ export const ActiveSessionScreen: React.FC = () => {
               <Button
                 title="Discard Workout"
                 variant="primary"
-                onPress={() => {
-                  setShowCancelModal(false);
-                  navigation.goBack();
-                }}
+                onPress={handleDiscard}
                 style={[styles.flexBtn, { marginLeft: 10, backgroundColor: '#EF4444' }]}
               />
             </View>
@@ -257,6 +236,9 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     marginVertical: 40,
+  },
+  anatomySection: {
+    marginBottom: 12,
   },
   actionContainer: {
     marginVertical: 24,

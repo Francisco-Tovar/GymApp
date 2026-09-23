@@ -25,6 +25,7 @@ export const WorkoutBuilderForm: React.FC<WorkoutBuilderFormProps> = ({
   const [workoutName, setWorkoutName] = useState(initialName);
   const [selectedIds, setSelectedIds] = useState<number[]>(initialSelectedIds);
   const [isOrderCollapsed, setIsOrderCollapsed] = useState(false);
+  const [isLibraryCollapsed, setIsLibraryCollapsed] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -89,7 +90,12 @@ export const WorkoutBuilderForm: React.FC<WorkoutBuilderFormProps> = ({
   const selectedMuscleGroups = selectedExercises.map((ex) => ex.muscle_groups);
 
   return (
-    <View style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={true}
+    >
       <Input
         label="Workout Routine Name"
         placeholder="e.g. Upper Body Power"
@@ -118,11 +124,7 @@ export const WorkoutBuilderForm: React.FC<WorkoutBuilderFormProps> = ({
           </TouchableOpacity>
 
           {!isOrderCollapsed ? (
-            <ScrollView
-              nestedScrollEnabled
-              style={styles.reorderList}
-              keyboardShouldPersistTaps="handled"
-            >
+            <View style={styles.reorderList}>
               {selectedExercises.map((ex, index) => (
                 <View key={ex.id} style={styles.reorderRow}>
                   <View style={styles.reorderNumberBox}>
@@ -167,34 +169,47 @@ export const WorkoutBuilderForm: React.FC<WorkoutBuilderFormProps> = ({
                   </View>
                 </View>
               ))}
-            </ScrollView>
+            </View>
           ) : null}
         </View>
       ) : null}
 
-      <Typography variant="label" color="#94A3B8" style={styles.sectionLabel}>
-        Exercise Library (Tap to add/remove)
-      </Typography>
+      <View style={styles.libraryContainer}>
+        <TouchableOpacity
+          onPress={() => setIsLibraryCollapsed(!isLibraryCollapsed)}
+          activeOpacity={0.7}
+          style={styles.reorderHeaderToggle}
+        >
+          <Typography variant="label" color="#94A3B8">
+            Exercise Library ({exercises.length} exercises)
+          </Typography>
+          <Typography variant="caption" color="#94A3B8" bold>
+            {isLibraryCollapsed ? '▼ Show Library' : '▲ Hide Library'}
+          </Typography>
+        </TouchableOpacity>
 
-      {exercises.length === 0 ? (
-        <Typography variant="body" color="#94A3B8" style={styles.emptyText}>
-          No exercises available. Please create an exercise first.
-        </Typography>
-      ) : (
-        <ScrollView style={styles.exerciseScroll} keyboardShouldPersistTaps="handled">
-          {exercises.map((ex) => {
-            const isSelected = selectedIds.includes(ex.id);
-            return (
-              <ExerciseListItem
-                key={ex.id}
-                exercise={ex}
-                selected={isSelected}
-                onPress={() => toggleExerciseSelection(ex.id)}
-              />
-            );
-          })}
-        </ScrollView>
-      )}
+        {!isLibraryCollapsed ? (
+          exercises.length === 0 ? (
+            <Typography variant="body" color="#94A3B8" style={styles.emptyText}>
+              No exercises available. Please create an exercise first.
+            </Typography>
+          ) : (
+            <View>
+              {exercises.map((ex) => {
+                const isSelected = selectedIds.includes(ex.id);
+                return (
+                  <ExerciseListItem
+                    key={ex.id}
+                    exercise={ex}
+                    selected={isSelected}
+                    onPress={() => toggleExerciseSelection(ex.id)}
+                  />
+                );
+              })}
+            </View>
+          )
+        ) : null}
+      </View>
 
       {error ? (
         <Typography variant="caption" color="#EF4444" style={styles.errorText}>
@@ -212,13 +227,19 @@ export const WorkoutBuilderForm: React.FC<WorkoutBuilderFormProps> = ({
           style={[styles.flexBtn, { marginLeft: 10 }]}
         />
       </View>
-    </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  contentContainer: {
+    paddingBottom: 16,
+  },
+  libraryContainer: {
+    marginTop: 8,
   },
   sectionLabel: {
     marginTop: 16,
@@ -240,8 +261,6 @@ const styles = StyleSheet.create({
     padding: 8,
     borderWidth: 1,
     borderColor: '#334155',
-    maxHeight: 220,
-    overflow: 'hidden',
   },
   reorderRow: {
     flexDirection: 'row',
@@ -280,11 +299,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 0,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  exerciseScroll: {
-    flex: 1,
-    maxHeight: 260,
-    marginVertical: 8,
   },
   emptyText: {
     marginVertical: 20,

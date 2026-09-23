@@ -1,5 +1,6 @@
 import { getDB } from './database';
-import { Exercise, Workout, Session, SessionSet } from '../types';
+import { Exercise, Workout, Session, SessionSet, WeightUnit } from '../types';
+import { convertWeight } from '../utils/unitConversion';
 
 export const fetchExercises = async (): Promise<Exercise[]> => {
   const db = await getDB();
@@ -35,7 +36,7 @@ export const fetchWorkouts = async (): Promise<Workout[]> => {
   const result: Workout[] = [];
   for (const w of workouts) {
     const weRows = await db.getAllAsync<{ exercise_id: number }>(
-      'SELECT exercise_id FROM workout_exercises WHERE workout_id = ?;',
+      'SELECT exercise_id FROM workout_exercises WHERE workout_id = ? ORDER BY id ASC;',
       [w.id]
     );
     const exercises: Exercise[] = [];
@@ -62,7 +63,7 @@ export const fetchWorkoutById = async (workoutId: number): Promise<Workout | nul
   if (!workout) return null;
 
   const weRows = await db.getAllAsync<{ exercise_id: number }>(
-    'SELECT exercise_id FROM workout_exercises WHERE workout_id = ?;',
+    'SELECT exercise_id FROM workout_exercises WHERE workout_id = ? ORDER BY id ASC;',
     [workoutId]
   );
 
@@ -143,22 +144,30 @@ export const deleteSession = async (id: number): Promise<void> => {
 
 export const fetchSessionsHistory = async (): Promise<Session[]> => {
   const db = await getDB();
-  const rows = await db.getAllAsync<{
-    id: number;
-    workout_id: number;
-    workout_name: string;
-    date: string;
-    total_sets: number;
-  }>(`
-    SELECT s.id, s.workout_id, w.name as workout_name, s.date, COUNT(ss.id) as total_sets
-    FROM sessions s
-    LEFT JOIN workouts w ON s.workout_id = w.id
-    LEFT JOIN session_sets ss ON s.id = ss.session_id
-    GROUP BY s.id
-    ORDER BY s.date DESC;
-  `);
+  const sessions = await db.getAllAsync<{ id: number; workout_id: number; date: string }>(
+    'SELECT id, workout_id, date FROM sessions ORDER BY date DESC;'
+  );
 
-  return rows;
+  const result: Session[] = [];
+  for (const s of sessions) {
+    const workout = await db.getFirstAsync<{ name: string }>(
+      'SELECT name FROM workouts WHERE id = ?;',
+      [s.workout_id]
+    );
+    const sets = await db.getAllAsync<{ id: number }>(
+      'SELECT id FROM session_sets WHERE session_id = ?;',
+      [s.id]
+    );
+    result.push({
+      id: s.id,
+      workout_id: s.workout_id,
+      workout_name: workout ? workout.name : 'Workout Session',
+      date: s.date,
+      total_sets: sets ? sets.length : 0,
+    });
+  }
+
+  return result;
 };
 
 export const fetchSessionSetsDetail = async (sessionId: number): Promise<SessionSet[]> => {
@@ -173,19 +182,29 @@ export const fetchSessionSetsDetail = async (sessionId: number): Promise<Session
 };
 
 export const fetchHeaviestWeightsMap = async (
-  exerciseIds: number[]
+  exerciseIds: number[],
+  targetUnit: WeightUnit = 'lb'
 ): Promise<Record<number, number>> => {
   if (!exerciseIds || exerciseIds.length === 0) return {};
   const db = await getDB();
   const resultMap: Record<number, number> = {};
 
   for (const exId of exerciseIds) {
-    const res = await db.getFirstAsync<{ max_weight: number }>(
-      'SELECT MAX(weight) as max_weight FROM session_sets WHERE exercise_id = ?;',
+    const rows = await db.getAllAsync<{ weight: number; unit: WeightUnit }>(
+      'SELECT weight, unit FROM session_sets WHERE exercise_id = ?;',
       [exId]
     );
-    if (res && res.max_weight !== null && res.max_weight !== undefined) {
-      resultMap[exId] = res.max_weight;
+    if (rows && rows.length > 0) {
+      let maxConverted = 0;
+      for (const row of rows) {
+        const converted = convertWeight(row.weight, row.unit || 'lb', targetUnit);
+        if (converted > maxConverted) {
+          maxConverted = converted;
+        }
+      }
+      if (maxConverted > 0) {
+        resultMap[exId] = maxConverted;
+      }
     }
   }
 

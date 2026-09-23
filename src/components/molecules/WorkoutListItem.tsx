@@ -11,6 +11,10 @@ interface WorkoutListItemProps {
   onStartSession: () => void;
   onEdit?: () => void;
   onDelete?: () => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
 }
 
 export const WorkoutListItem: React.FC<WorkoutListItemProps> = ({
@@ -18,6 +22,10 @@ export const WorkoutListItem: React.FC<WorkoutListItemProps> = ({
   onStartSession,
   onEdit,
   onDelete,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp = false,
+  canMoveDown = false,
 }) => {
   const exerciseCount = workout.exercises ? workout.exercises.length : 0;
 
@@ -33,6 +41,28 @@ export const WorkoutListItem: React.FC<WorkoutListItemProps> = ({
           </Typography>
         </View>
         <View style={styles.headerButtons}>
+          {onMoveUp ? (
+            <Button
+              title="▲"
+              variant="secondary"
+              size="small"
+              disabled={!canMoveUp}
+              onPress={onMoveUp}
+              style={styles.reorderBtn}
+              textStyle={{ fontSize: 12, lineHeight: 14 }}
+            />
+          ) : null}
+          {onMoveDown ? (
+            <Button
+              title="▼"
+              variant="secondary"
+              size="small"
+              disabled={!canMoveDown}
+              onPress={onMoveDown}
+              style={styles.reorderBtn}
+              textStyle={{ fontSize: 12, lineHeight: 14 }}
+            />
+          ) : null}
           {onEdit ? (
             <Button
               title="Edit"
@@ -78,6 +108,7 @@ export const WorkoutListItem: React.FC<WorkoutListItemProps> = ({
 const styles = StyleSheet.create({
   card: {
     padding: 18,
+    marginBottom: 12,
   },
   topRow: {
     flexDirection: 'row',
@@ -91,6 +122,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
+  },
+  reorderBtn: {
+    minWidth: 32,
+    height: 32,
+    paddingHorizontal: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   subtext: {
     marginTop: 2,

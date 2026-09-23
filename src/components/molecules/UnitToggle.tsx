@@ -8,9 +8,6 @@ export const UnitToggle: React.FC = () => {
 
   return (
     <View style={styles.container}>
-      <Typography variant="caption" color="#94A3B8" style={styles.label}>
-        UNIT
-      </Typography>
       <TouchableOpacity onPress={toggleUnit} style={styles.togglePill} activeOpacity={0.8}>
         <View style={[styles.unitOption, unit === 'kg' && styles.unitActive]}>
           <Typography variant="caption" bold color={unit === 'kg' ? '#FFFFFF' : '#94A3B8'}>
