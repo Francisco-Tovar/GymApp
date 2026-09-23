@@ -388,3 +388,15 @@ h1, h2, h3, h4, h5, h6 {
   }
 }
 
+/* Form Select & Option Styling */
+select, option {
+  color-scheme: dark;
+  background-color: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+option:checked, option:hover {
+  background-color: var(--primary) !important;
+  color: #ffffff !important;
+}
+

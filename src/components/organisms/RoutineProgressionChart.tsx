@@ -9,6 +9,7 @@ import {
 import { Typography } from '../atoms/Typography';
 import { Card } from '../atoms/Card';
 import { Badge } from '../atoms/Badge';
+import { Combobox } from '../atoms/Combobox';
 import {
   TrendingUp,
   Award,
@@ -331,31 +332,16 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             {/* Routine Switcher if multiple workouts provided */}
             {availableWorkouts && availableWorkouts.length > 0 && onSelectWorkoutId && (
-              <select
+              <Combobox
+                options={[
+                  { value: '', label: 'All Routine Workouts' },
+                  ...availableWorkouts.map((w) => ({ value: w.id, label: w.name })),
+                ]}
                 value={selectedWorkoutId ?? ''}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  onSelectWorkoutId(val ? Number(val) : null);
-                }}
-                style={{
-                  backgroundColor: 'var(--bg-app)',
-                  color: 'var(--text-main)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '6px 10px',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  outline: 'none',
-                  cursor: 'pointer',
-                }}
-              >
-                <option value="">All Routine Workouts</option>
-                {availableWorkouts.map((w) => (
-                  <option key={w.id} value={w.id}>
-                    {w.name}
-                  </option>
-                ))}
-              </select>
+                onChange={(val) => onSelectWorkoutId(val ? Number(val) : null)}
+                size="sm"
+                width="210px"
+              />
             )}
           </div>
         </div>

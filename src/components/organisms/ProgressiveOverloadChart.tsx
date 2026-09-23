@@ -17,6 +17,7 @@ import { Typography } from '../atoms/Typography';
 import { Card } from '../atoms/Card';
 import { Badge } from '../atoms/Badge';
 import { Button } from '../atoms/Button';
+import { Combobox } from '../atoms/Combobox';
 import { TrendingUp, Award, Activity, Calendar, Dumbbell, Sparkles, ArrowLeft } from 'lucide-react';
 
 export interface ProgressiveOverloadChartProps {
@@ -310,36 +311,20 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
           </div>
         </div>
 
-        {/* Exercise Dropdown Selector */}
-        <div style={{ position: 'relative', minWidth: '180px', flex: '1 1 auto', maxWidth: '260px' }}>
-          <select
+        {/* Exercise Combobox Selector */}
+        <div style={{ position: 'relative', minWidth: '180px', flex: '1 1 auto', maxWidth: '280px' }}>
+          <Combobox
+            options={availableExercises.map((ex) => ({
+              value: ex.id,
+              label: ex.name,
+              subLabel: `${ex.sessionCount} session${ex.sessionCount !== 1 ? 's' : ''}`,
+            }))}
             value={selectedExercise}
-            onChange={(e) => setSelectedExercise(e.target.value)}
+            onChange={(val) => setSelectedExercise(val)}
+            placeholder="Select an exercise..."
             disabled={availableExercises.length === 0}
-            style={{
-              width: '100%',
-              backgroundColor: 'var(--bg-main)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-sm)',
-              padding: '8px 12px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: availableExercises.length === 0 ? 'not-allowed' : 'pointer',
-              outline: 'none',
-              appearance: 'auto',
-            }}
-          >
-            {availableExercises.length === 0 ? (
-              <option value="">No exercises recorded</option>
-            ) : (
-              availableExercises.map((ex) => (
-                <option key={ex.id} value={ex.id}>
-                  {ex.name} ({ex.sessionCount} session{ex.sessionCount !== 1 ? 's' : ''})
-                </option>
-              ))
-            )}
-          </select>
+            size="md"
+          />
         </div>
       </div>
 
