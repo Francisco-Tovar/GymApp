@@ -1,6 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Session, SessionSet } from '../types';
-import { fetchSessionsHistory, deleteSession, fetchSessionSetsDetail, fetchAllWorkoutSessionRecords, seedDummyWorkouts } from '../db/db';
+import { Session, SessionSet, Workout } from '../types';
+import {
+  fetchSessionsHistory,
+  deleteSession,
+  fetchSessionSetsDetail,
+  fetchAllWorkoutSessionRecords,
+  fetchRoutineSessionRecords,
+  fetchWorkouts,
+  seedDummyWorkouts,
+  restoreOriginalWorkouts,
+} from '../db/db';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { convertWeight } from '../utils/unitConversion';
 import { Typography } from '../components/atoms/Typography';
@@ -9,14 +18,20 @@ import { Card } from '../components/atoms/Card';
 import { Badge } from '../components/atoms/Badge';
 import { Modal } from '../components/atoms/Modal';
 import { ProgressiveOverloadChart } from '../components/organisms/ProgressiveOverloadChart';
+import { RoutineProgressionChart } from '../components/organisms/RoutineProgressionChart';
 import { WorkoutSessionRecord } from '../utils/progressiveOverload';
-import { Calendar, Trash2, ChevronDown, ChevronRight, History, CheckCircle2, TrendingUp, ListFilter } from 'lucide-react';
+import { RoutineSessionRecord } from '../utils/routineProgression';
+import { Calendar, Trash2, ChevronDown, ChevronRight, History, CheckCircle2, TrendingUp, ListFilter, Layers, BarChart2 } from 'lucide-react';
 
 export const HistoryScreen: React.FC = () => {
   const { unit } = useSettingsStore();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [sessionRecords, setSessionRecords] = useState<WorkoutSessionRecord[]>([]);
+  const [routineRecords, setRoutineRecords] = useState<RoutineSessionRecord[]>([]);
+  const [workouts, setWorkouts] = useState<Workout[]>([]);
+  const [selectedWorkoutId, setSelectedWorkoutId] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<'analytics' | 'logs'>('analytics');
+  const [analyticsType, setAnalyticsType] = useState<'routine' | 'exercise'>('routine');
   const [loading, setLoading] = useState(true);
   const [expandedSessionId, setExpandedSessionId] = useState<number | null>(null);
   const [sessionSetsMap, setSessionSetsMap] = useState<Record<number, SessionSet[]>>({});
@@ -25,13 +40,18 @@ export const HistoryScreen: React.FC = () => {
   const loadHistory = async () => {
     try {
       setLoading(true);
+      await restoreOriginalWorkouts();
       await seedDummyWorkouts();
-      const [data, records] = await Promise.all([
+      const [data, records, rRecords, wList] = await Promise.all([
         fetchSessionsHistory(),
         fetchAllWorkoutSessionRecords(unit),
+        fetchRoutineSessionRecords(selectedWorkoutId ?? undefined, unit),
+        fetchWorkouts(),
       ]);
       setSessions(data);
       setSessionRecords(records);
+      setRoutineRecords(rRecords);
+      setWorkouts(wList);
     } catch (err) {
       console.error('Failed to load history:', err);
     } finally {
@@ -41,7 +61,7 @@ export const HistoryScreen: React.FC = () => {
 
   useEffect(() => {
     loadHistory();
-  }, [unit]);
+  }, [unit, selectedWorkoutId]);
 
 
   const toggleExpand = async (sessionId: number) => {
@@ -163,7 +183,87 @@ export const HistoryScreen: React.FC = () => {
           </Typography>
         </div>
       ) : viewMode === 'analytics' ? (
-        <ProgressiveOverloadChart records={sessionRecords} unit={unit} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Analytics Type Sub-switch */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '8px',
+            }}
+          >
+            <div
+              style={{
+                display: 'inline-flex',
+                backgroundColor: 'var(--bg-surface)',
+                padding: '3px',
+                borderRadius: 'var(--radius-sm)',
+                border: '1px solid var(--border-color)',
+                gap: '2px',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setAnalyticsType('routine')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '4px',
+                  border: 'none',
+                  fontSize: '12px',
+                  fontWeight: analyticsType === 'routine' ? 700 : 500,
+                  cursor: 'pointer',
+                  backgroundColor: analyticsType === 'routine' ? 'var(--primary)' : 'transparent',
+                  color: analyticsType === 'routine' ? '#ffffff' : 'var(--text-muted)',
+                  boxShadow: analyticsType === 'routine' ? '0 1px 4px var(--primary-glow)' : 'none',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <Layers size={13} />
+                <span>Routine Multi-Line</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAnalyticsType('exercise')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  padding: '6px 12px',
+                  borderRadius: '4px',
+                  border: 'none',
+                  fontSize: '12px',
+                  fontWeight: analyticsType === 'exercise' ? 700 : 500,
+                  cursor: 'pointer',
+                  backgroundColor: analyticsType === 'exercise' ? 'var(--primary)' : 'transparent',
+                  color: analyticsType === 'exercise' ? '#ffffff' : 'var(--text-muted)',
+                  boxShadow: analyticsType === 'exercise' ? '0 1px 4px var(--primary-glow)' : 'none',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <TrendingUp size={13} />
+                <span>Single Movement</span>
+              </button>
+            </div>
+          </div>
+
+          {analyticsType === 'routine' ? (
+            <RoutineProgressionChart
+              records={routineRecords}
+              unit={unit}
+              availableWorkouts={workouts}
+              selectedWorkoutId={selectedWorkoutId}
+              onSelectWorkoutId={setSelectedWorkoutId}
+            />
+          ) : (
+            <ProgressiveOverloadChart records={sessionRecords} unit={unit} />
+          )}
+        </div>
       ) : sessions.length === 0 ? (
         <div style={{ textAlign: 'center', padding: '40px 0' }}>
           <History size={48} style={{ color: 'var(--text-subtle)', marginBottom: '12px' }} />

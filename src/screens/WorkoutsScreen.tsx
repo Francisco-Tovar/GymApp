@@ -1,15 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import { Workout, Exercise } from '../types';
-import { fetchWorkouts, fetchExercises, deleteWorkout, insertWorkout, updateWorkout, restoreOriginalWorkouts } from '../db/db';
+import {
+  fetchWorkouts,
+  fetchExercises,
+  deleteWorkout,
+  insertWorkout,
+  updateWorkout,
+  restoreOriginalWorkouts,
+  fetchRoutineSessionRecords,
+} from '../db/db';
 import { cleanupFullBodyRoutine } from '../db/seedDummyData';
 import { useActiveWorkoutStore } from '../store/useActiveWorkoutStore';
+import { useSettingsStore } from '../store/useSettingsStore';
 import { Typography } from '../components/atoms/Typography';
 import { Button } from '../components/atoms/Button';
 import { Card } from '../components/atoms/Card';
 import { Badge } from '../components/atoms/Badge';
 import { Modal } from '../components/atoms/Modal';
 import { WorkoutBuilderModal } from '../components/organisms/WorkoutBuilderModal';
-import { Play, Plus, ChevronUp, ChevronDown, Trash2, Edit2, Dumbbell, Flame } from 'lucide-react';
+import { RoutineProgressionChart } from '../components/organisms/RoutineProgressionChart';
+import { RoutineSessionRecord } from '../utils/routineProgression';
+import { Play, Plus, ChevronUp, ChevronDown, Trash2, Edit2, Dumbbell, Flame, TrendingUp } from 'lucide-react';
 
 interface WorkoutsScreenProps {
   onStartSession: (workoutId: number, workoutName: string) => void;
@@ -30,8 +41,25 @@ export const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({
   const [isBuilderOpen, setIsBuilderOpen] = useState(false);
   const [editingWorkout, setEditingWorkout] = useState<Workout | null>(null);
   const [deletingWorkout, setDeletingWorkout] = useState<Workout | null>(null);
+  const [inspectingWorkout, setInspectingWorkout] = useState<Workout | null>(null);
+  const [inspectingRecords, setInspectingRecords] = useState<RoutineSessionRecord[]>([]);
+  const [loadingProgression, setLoadingProgression] = useState(false);
 
+  const { unit } = useSettingsStore();
   const { isActive, workoutName: activeWorkoutName } = useActiveWorkoutStore();
+
+  const handleOpenProgression = async (w: Workout) => {
+    setInspectingWorkout(w);
+    setLoadingProgression(true);
+    try {
+      const records = await fetchRoutineSessionRecords(w.id, unit);
+      setInspectingRecords(records);
+    } catch (err) {
+      console.error('Failed to load routine progression records:', err);
+    } finally {
+      setLoadingProgression(false);
+    }
+  };
 
   const getSavedOrder = (): number[] => {
     try {
@@ -294,6 +322,16 @@ export const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({
                 <div style={{ display: 'flex', gap: '6px' }}>
                   <button
                     type="button"
+                    onClick={() => handleOpenProgression(w)}
+                    title="View Routine Progression"
+                    aria-label="View Routine Progression"
+                    className="btn btn-secondary btn-sm"
+                    style={{ padding: '6px 10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                  >
+                    <TrendingUp size={15} color="var(--primary)" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => {
                       setEditingWorkout(w);
                       setIsBuilderOpen(true);
@@ -322,7 +360,7 @@ export const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({
                   leftIcon={<Play size={14} />}
                   onClick={() => onStartSession(w.id, w.name)}
                 >
-                  Start Workout
+                  Start
                 </Button>
               </div>
             </Card>
@@ -349,6 +387,33 @@ export const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({
             : null
         }
       />
+
+      {/* Routine Progression Modal */}
+      <Modal
+        isOpen={Boolean(inspectingWorkout)}
+        onClose={() => setInspectingWorkout(null)}
+        position="center"
+        maxWidth="820px"
+      >
+        {inspectingWorkout && (
+          <div>
+            {loadingProgression ? (
+              <div style={{ textAlign: 'center', padding: '40px 0' }}>
+                <Typography variant="body" color="var(--text-muted)">
+                  Loading routine overload progression...
+                </Typography>
+              </div>
+            ) : (
+              <RoutineProgressionChart
+                records={inspectingRecords}
+                unit={unit}
+                title={`${inspectingWorkout.name} Overload`}
+                subtitle="Relative growth & progressive overload tracking across all routine movements"
+              />
+            )}
+          </div>
+        )}
+      </Modal>
 
       {/* Delete Confirmation Modal */}
       <Modal

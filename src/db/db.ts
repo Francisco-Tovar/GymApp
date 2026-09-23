@@ -2,6 +2,7 @@ import Dexie, { type EntityTable } from 'dexie';
 import { Exercise, Workout, WorkoutExercise, Session, SessionSet, WeightUnit } from '../types';
 import { convertWeight } from '../utils/unitConversion';
 import { seedDummyWorkouts } from './seedDummyData';
+import { RoutineSessionRecord, RoutineExerciseInput } from '../utils/routineProgression';
 
 export class GymAppDatabase extends Dexie {
   exercises!: EntityTable<Exercise, 'id'>;
@@ -241,10 +242,40 @@ export const initDatabase = async (): Promise<void> => {
 
 export const restoreOriginalWorkouts = async (): Promise<void> => {
   await db.transaction('rw', db.exercises, db.workouts, db.workout_exercises, db.sessions, async () => {
-    // 1. Ensure all 12 canonical exercises exist with correct IDs
+    // 1. Alias mapping to merge and canonicalize any loose exercise names
+    const aliasMapping: Record<string, string[]> = {
+      'Flat Dumbbell Bench Press': ['flat bench db press', 'flat dumbbell bench press', 'dumbbell bench press'],
+      'DB Lateral Raises': ['lateral raises (db)', 'db lateral raises', 'lateral raises', 'dumbbell lateral raises'],
+      'DB Bicep Curls': ['bicep curls (db)', 'db bicep curls', 'bicep curls', 'dumbbell bicep curls'],
+      'Hack Squats': ['hack squats', 'hack squat'],
+      'Lat Pulldowns': ['lat pulldowns', 'lat pulldown'],
+      'Seated Leg Curls': ['seated leg curls', 'seated leg curl', 'leg curls'],
+      'EZ-Bar Romanian Deadlifts': ['ez-bar romanian deadlifts', 'romanian deadlifts', 'rdl', 'ez bar romanian deadlifts'],
+      'Incline Bench Press': ['incline bench press', 'incline barbell bench press', 'incline db bench press'],
+      'Seated Cable Rows': ['seated cable rows', 'seated cable row', 'cable rows'],
+      'Leg Press': ['leg press'],
+      'Triceps Rope Pushdowns': ['triceps rope pushdowns', 'tricep rope pushdowns', 'triceps pushdowns'],
+      'Standing Calf Raises': ['standing calf raises', 'standing calf raise', 'calf raises'],
+    };
+
     const exerciseIdMap: Record<string, number> = {};
     for (const ex of INITIAL_EXERCISES) {
-      const existing = await db.exercises.where('name').equalsIgnoreCase(ex.name).first();
+      let existing = await db.exercises.where('name').equalsIgnoreCase(ex.name).first();
+
+      if (!existing) {
+        const aliases = aliasMapping[ex.name] || [];
+        for (const alias of aliases) {
+          const aliasedMatch = await db.exercises.where('name').equalsIgnoreCase(alias).first();
+          if (aliasedMatch) {
+            existing = aliasedMatch;
+            if (aliasedMatch.id) {
+              await db.exercises.update(aliasedMatch.id, { name: ex.name, muscle_groups: ex.muscle_groups });
+            }
+            break;
+          }
+        }
+      }
+
       if (!existing) {
         const newId = await db.exercises.add({ name: ex.name, muscle_groups: ex.muscle_groups });
         exerciseIdMap[ex.name] = Number(newId);
@@ -253,7 +284,7 @@ export const restoreOriginalWorkouts = async (): Promise<void> => {
       }
     }
 
-    // 2. Identify Workout A and Workout B (case-insensitive and partial match)
+    // 2. Identify Workout A and Workout B
     const allWorkouts = await db.workouts.toArray();
 
     let workoutA = allWorkouts.find(
@@ -297,7 +328,6 @@ export const restoreOriginalWorkouts = async (): Promise<void> => {
     // 3. Delete ANY workout that is not Workout A or Workout B so they are the ONLY ones
     for (const w of allWorkouts) {
       if (w.id && !canonicalIds.has(w.id)) {
-        // Re-link any sessions from the extra workout to workoutAId
         const extraSessions = await db.sessions.where('workout_id').equals(w.id).toArray();
         for (const s of extraSessions) {
           if (s.id) {
@@ -309,7 +339,7 @@ export const restoreOriginalWorkouts = async (): Promise<void> => {
       }
     }
 
-    // 4. Reset Workout A exercises to the exact structure
+    // 4. Strictly reset Workout A exercises to the exact canonical structure
     await db.workout_exercises.where('workout_id').equals(workoutAId).delete();
     for (const exName of INITIAL_WORKOUTS[0].exerciseNames) {
       const exId = exerciseIdMap[exName];
@@ -321,7 +351,7 @@ export const restoreOriginalWorkouts = async (): Promise<void> => {
       }
     }
 
-    // 5. Reset Workout B exercises to the exact structure
+    // 5. Strictly reset Workout B exercises to the exact canonical structure
     await db.workout_exercises.where('workout_id').equals(workoutBId).delete();
     for (const exName of INITIAL_WORKOUTS[1].exerciseNames) {
       const exId = exerciseIdMap[exName];
@@ -334,7 +364,6 @@ export const restoreOriginalWorkouts = async (): Promise<void> => {
     }
   });
 
-  // Reset custom order cache so Workout A is first and Workout B is second
   if (typeof window !== 'undefined') {
     localStorage.removeItem('gymapp_workout_order_pwa');
   }
@@ -402,7 +431,15 @@ export const fetchWorkouts = async (): Promise<Workout[]> => {
     });
   }
 
-  return result.reverse();
+  result.sort((a, b) => {
+    const isA = a.name.toLowerCase().includes('body a') || a.name.toLowerCase().includes('workout a');
+    const isB = b.name.toLowerCase().includes('body b') || b.name.toLowerCase().includes('workout b');
+    if (isA && !isB) return -1;
+    if (isB && !isA) return 1;
+    return (a.id ?? 0) - (b.id ?? 0);
+  });
+
+  return result;
 };
 
 export const fetchWorkoutById = async (workoutId: number): Promise<Workout | null> => {
@@ -618,5 +655,77 @@ export const fetchAllWorkoutSessionRecords = async (
   }
 
   return Array.from(grouped.values());
+};
+
+export const fetchRoutineSessionRecords = async (
+  workoutId?: number,
+  targetUnit: WeightUnit = 'lb'
+): Promise<RoutineSessionRecord[]> => {
+  const allSessions = await db.sessions.toArray();
+  const allSets = await db.session_sets.toArray();
+  const allExercises = await db.exercises.toArray();
+  const allWorkouts = await db.workouts.toArray();
+
+  const exerciseMap = new Map<number, string>();
+  for (const ex of allExercises) {
+    if (ex.id) exerciseMap.set(ex.id, ex.name);
+  }
+
+  const workoutMap = new Map<number, string>();
+  for (const w of allWorkouts) {
+    if (w.id) workoutMap.set(w.id, w.name);
+  }
+
+  const relevantSessions = workoutId
+    ? allSessions.filter((s) => s.workout_id === workoutId)
+    : allSessions;
+
+  const sessionSetsBySession = new Map<number, SessionSet[]>();
+  for (const setItem of allSets) {
+    if (!setItem.session_id) continue;
+    const list = sessionSetsBySession.get(setItem.session_id) || [];
+    list.push(setItem);
+    sessionSetsBySession.set(setItem.session_id, list);
+  }
+
+  const results: RoutineSessionRecord[] = [];
+
+  for (const s of relevantSessions) {
+    if (!s.id) continue;
+    const sets = sessionSetsBySession.get(s.id) || [];
+    if (sets.length === 0) continue;
+
+    const exercisesMap = new Map<number, Array<{ weight: number; reps: number; setNumber?: number }>>();
+    for (const st of sets) {
+      const list = exercisesMap.get(st.exercise_id) || [];
+      const convertedWeight = convertWeight(st.weight, st.unit || 'lb', targetUnit);
+      list.push({
+        weight: convertedWeight,
+        reps: st.reps,
+        setNumber: st.set_number,
+      });
+      exercisesMap.set(st.exercise_id, list);
+    }
+
+    const exercises: RoutineExerciseInput[] = [];
+    for (const [exId, exSets] of exercisesMap.entries()) {
+      const exName = exerciseMap.get(exId) || `Exercise #${exId}`;
+      exercises.push({
+        exerciseId: String(exId),
+        exerciseName: exName,
+        sets: exSets,
+      });
+    }
+
+    results.push({
+      date: s.date,
+      workoutId: s.workout_id,
+      workoutName: workoutMap.get(s.workout_id) || `Routine #${s.workout_id}`,
+      exercises,
+    });
+  }
+
+  results.sort((a, b) => new Date(a.date || 0).getTime() - new Date(b.date || 0).getTime());
+  return results;
 };
 
