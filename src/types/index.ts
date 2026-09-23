@@ -6,6 +6,8 @@ export interface Exercise {
   id?: number;
   name: string;
   muscle_groups: string;
+  imageUrl?: string | null;
+  notes?: string | null;
 }
 
 export interface Workout {

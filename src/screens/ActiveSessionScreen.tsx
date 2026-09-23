@@ -3,11 +3,12 @@ import { useActiveWorkoutStore } from '../store/useActiveWorkoutStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { t } from '../utils/i18n';
 import { fetchWorkoutById, fetchHeaviestWeightsMap, saveCompletedSession } from '../db/db';
-import { SessionSet, WeightUnit } from '../types';
+import { Exercise, SessionSet, WeightUnit } from '../types';
 import { Typography } from '../components/atoms/Typography';
 import { Button } from '../components/atoms/Button';
 import { Modal } from '../components/atoms/Modal';
 import { ActiveSetLogger } from '../components/organisms/ActiveSetLogger';
+import { ExerciseGuideModal } from '../components/organisms/ExerciseGuideModal';
 import { BodyMuscleMap } from '../components/organisms/BodyMuscleMap';
 import { requestWakeLock, releaseWakeLock, triggerVibration } from '../utils/hardwareApis';
 import { ArrowLeft, Clock, Timer, Check, AlertTriangle, ShieldCheck, RefreshCw } from 'lucide-react';
@@ -46,6 +47,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
   const [loading, setLoading] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [selectedGuideExercise, setSelectedGuideExercise] = useState<Exercise | null>(null);
 
   // Rest Timer State
   const [restTimerSeconds, setRestTimerSeconds] = useState<number | null>(null);
@@ -372,6 +374,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
             canMoveDown={index < exercises.length - 1}
             onMoveUp={() => moveExerciseUp(index)}
             onMoveDown={() => moveExerciseDown(index)}
+            onOpenGuide={setSelectedGuideExercise}
           />
         ))}
       </div>
@@ -430,6 +433,13 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
           </Button>
         </div>
       </Modal>
+
+      {/* Exercise Guide Modal */}
+      <ExerciseGuideModal
+        isOpen={Boolean(selectedGuideExercise)}
+        exercise={selectedGuideExercise}
+        onClose={() => setSelectedGuideExercise(null)}
+      />
     </div>
   );
 };

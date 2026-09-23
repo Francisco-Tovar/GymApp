@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Exercise, WeightUnit } from '../../types';
 import { Card } from '../atoms/Card';
 import { Typography } from '../atoms/Typography';
@@ -8,7 +8,7 @@ import { SetInputRow } from '../molecules/SetInputRow';
 import { LocalSetState } from '../../store/useActiveWorkoutStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { t, translateMuscleGroup } from '../../utils/i18n';
-import { ChevronUp, ChevronDown, Plus, ChevronRight } from 'lucide-react';
+import { ChevronUp, ChevronDown, Plus, ChevronRight, Image as ImageIcon } from 'lucide-react';
 
 interface ActiveSetLoggerProps {
   exercise: Exercise;
@@ -21,6 +21,7 @@ interface ActiveSetLoggerProps {
   onMoveDown?: () => void;
   canMoveUp?: boolean;
   canMoveDown?: boolean;
+  onOpenGuide?: (exercise: Exercise) => void;
 }
 
 export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
@@ -34,9 +35,39 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
   onMoveDown,
   canMoveUp = false,
   canMoveDown = false,
+  onOpenGuide,
 }) => {
   const [collapsed, setCollapsed] = useState(false);
   const { language } = useSettingsStore();
+  const longPressTimerRef = useRef<number | null>(null);
+  const isLongPressTriggeredRef = useRef(false);
+
+  const startLongPress = () => {
+    isLongPressTriggeredRef.current = false;
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+
+    if (exercise.imageUrl || exercise.notes) {
+      longPressTimerRef.current = window.setTimeout(() => {
+        isLongPressTriggeredRef.current = true;
+        onOpenGuide?.(exercise);
+      }, 500);
+    }
+  };
+
+  const cancelLongPress = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+  };
+
+  const handleHeaderClick = () => {
+    if (isLongPressTriggeredRef.current) {
+      isLongPressTriggeredRef.current = false;
+      return;
+    }
+    setCollapsed(!collapsed);
+  };
 
   const muscleList = exercise.muscle_groups
     ? exercise.muscle_groups.split(',').map((m) => m.trim())
@@ -56,10 +87,60 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
         }}
       >
         <div
-          onClick={() => setCollapsed(!collapsed)}
-          style={{ cursor: 'pointer', flex: 1 }}
+          onClick={handleHeaderClick}
+          onTouchStart={startLongPress}
+          onTouchEnd={cancelLongPress}
+          onTouchMove={cancelLongPress}
+          onMouseDown={startLongPress}
+          onMouseUp={cancelLongPress}
+          onMouseLeave={cancelLongPress}
+          style={{
+            cursor: 'pointer',
+            flex: 1,
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+          }}
+          title={
+            exercise.imageUrl || exercise.notes
+              ? language === 'es'
+                ? 'Toca para contraer / Mantén presionado para ver la guía'
+                : 'Tap to collapse / Long press to view guide'
+              : undefined
+          }
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {exercise.imageUrl && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onOpenGuide?.(exercise);
+                }}
+                title={language === 'es' ? 'Ver Guía del Ejercicio' : 'View Exercise Guide'}
+                style={{
+                  width: '24px',
+                  height: '24px',
+                  borderRadius: '4px',
+                  overflow: 'hidden',
+                  border: '1px solid var(--border-color)',
+                  padding: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  flexShrink: 0,
+                  backgroundColor: 'var(--bg-elevated)',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                }}
+              >
+                <img
+                  src={exercise.imageUrl}
+                  alt=""
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              </button>
+            )}
+
             <Typography variant="h3" color="var(--text-primary)">
               {exercise.name}
             </Typography>

@@ -99,6 +99,21 @@ export const TRANSLATIONS = {
     create_exercise: 'Create Exercise',
     save_changes: 'Save Changes',
 
+    // Exercise Images & Form Cues
+    exercise_guide: 'Exercise Guide',
+    view_guide: 'View Guide',
+    guide_image: 'Visual Guide / Photo',
+    image_upload: 'Upload Visual Guide / Photo',
+    drop_image_here: 'Drop image here or click to browse',
+    image_formats_hint: 'PNG, JPG, WebP, or GIF (up to 5MB)',
+    change_image: 'Change Image',
+    remove_image: 'Remove Image',
+    or_enter_image_url: 'Or paste image URL',
+    image_url_placeholder: 'https://example.com/exercise-photo.jpg',
+    form_cues: 'Form Cues & Execution Notes',
+    form_cues_placeholder: 'e.g. Keep chest high, pull elbows toward hips, 1s pause at peak stretch...',
+    no_form_cues: 'No execution notes recorded for this movement.',
+
     // History Screen & Analytics Tabs
     workout_history: 'Workout History',
     completed_sessions: 'completed session(s) recorded',
@@ -257,6 +272,21 @@ export const TRANSLATIONS = {
     custom_muscle_placeholder: 'Músculo personalizado (ej. Braquial)...',
     create_exercise: 'Crear Ejercicio',
     save_changes: 'Guardar Cambios',
+
+    // Exercise Images & Form Cues
+    exercise_guide: 'Guía del Ejercicio',
+    view_guide: 'Ver Guía',
+    guide_image: 'Guía Visual / Foto',
+    image_upload: 'Subir Guía Visual / Foto',
+    drop_image_here: 'Arrastra una imagen aquí o haz clic para buscar',
+    image_formats_hint: 'PNG, JPG, WebP o GIF (hasta 5MB)',
+    change_image: 'Cambiar Imagen',
+    remove_image: 'Eliminar Imagen',
+    or_enter_image_url: 'O pega una URL de imagen',
+    image_url_placeholder: 'https://ejemplo.com/foto-ejercicio.jpg',
+    form_cues: 'Claves Técnicas y Notas',
+    form_cues_placeholder: 'ej. Pecho erguido, codos a 45°, pausa de 1s en estiramiento máximo...',
+    no_form_cues: 'No hay notas técnicas registradas para este ejercicio.',
 
     // History Screen & Analytics Tabs
     workout_history: 'Historial de Entrenamiento',

@@ -8,10 +8,11 @@ import { Card } from '../components/atoms/Card';
 import { Badge } from '../components/atoms/Badge';
 import { Modal } from '../components/atoms/Modal';
 import { ExerciseFormModal } from '../components/organisms/ExerciseFormModal';
+import { ExerciseGuideModal } from '../components/organisms/ExerciseGuideModal';
 import { ProgressiveOverloadChart } from '../components/organisms/ProgressiveOverloadChart';
 import { WorkoutSessionRecord } from '../utils/progressiveOverload';
 import { t, translateMuscleGroup } from '../utils/i18n';
-import { Plus, Search, Edit2, Trash2, Library, TrendingUp } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Library, TrendingUp, Eye, Image as ImageIcon } from 'lucide-react';
 
 export const ExercisesScreen: React.FC = () => {
   const { unit, language } = useSettingsStore();
@@ -26,6 +27,7 @@ export const ExercisesScreen: React.FC = () => {
   const [exerciseToEdit, setExerciseToEdit] = useState<Exercise | null>(null);
   const [exerciseToDelete, setExerciseToDelete] = useState<Exercise | null>(null);
   const [exerciseForChart, setExerciseForChart] = useState<Exercise | null>(null);
+  const [exerciseForGuide, setExerciseForGuide] = useState<Exercise | null>(null);
 
   const loadData = async () => {
     try {
@@ -47,11 +49,16 @@ export const ExercisesScreen: React.FC = () => {
     loadData();
   }, []);
 
-  const handleSaveExercise = async (name: string, muscleGroups: string) => {
+  const handleSaveExercise = async (
+    name: string,
+    muscleGroups: string,
+    imageUrl?: string | null,
+    notes?: string | null
+  ) => {
     if (exerciseToEdit?.id) {
-      await updateExercise(exerciseToEdit.id, name, muscleGroups);
+      await updateExercise(exerciseToEdit.id, name, muscleGroups, imageUrl, notes);
     } else {
-      await insertExercise(name, muscleGroups);
+      await insertExercise(name, muscleGroups, imageUrl, notes);
     }
     await loadData();
     setExerciseToEdit(null);
@@ -177,20 +184,69 @@ export const ExercisesScreen: React.FC = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {filteredExercises.map((ex) => (
             <Card key={ex.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
-              <div style={{ flex: 1, minWidth: 0, paddingRight: '12px' }}>
-                <Typography variant="h3" style={{ fontSize: '15px', marginBottom: '4px' }}>
-                  {ex.name}
-                </Typography>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                  {ex.muscle_groups.split(',').map((m, idx) => (
-                    <Badge key={idx} variant="primary">
-                      {translateMuscleGroup(m.trim(), language)}
-                    </Badge>
-                  ))}
+              <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0, paddingRight: '12px' }}>
+                {ex.imageUrl ? (
+                  <button
+                    type="button"
+                    onClick={() => setExerciseForGuide(ex)}
+                    title={language === 'es' ? 'Ver Guía del Ejercicio' : 'View Exercise Guide'}
+                    style={{
+                      width: '40px',
+                      height: '40px',
+                      borderRadius: 'var(--radius-sm, 6px)',
+                      overflow: 'hidden',
+                      border: '1px solid var(--border-color)',
+                      padding: 0,
+                      marginRight: '12px',
+                      cursor: 'pointer',
+                      flexShrink: 0,
+                      background: 'var(--bg-elevated)',
+                    }}
+                  >
+                    <img
+                      src={ex.imageUrl}
+                      alt={ex.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </button>
+                ) : null}
+
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                    <Typography variant="h3" style={{ fontSize: '15px' }}>
+                      {ex.name}
+                    </Typography>
+                    {(ex.imageUrl || ex.notes) && !ex.imageUrl && (
+                      <span
+                        title={language === 'es' ? 'Tiene notas' : 'Has notes'}
+                        style={{ color: 'var(--primary)', display: 'inline-flex' }}
+                      >
+                        <ImageIcon size={14} />
+                      </span>
+                    )}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                    {ex.muscle_groups.split(',').map((m, idx) => (
+                      <Badge key={idx} variant="primary">
+                        {translateMuscleGroup(m.trim(), language)}
+                      </Badge>
+                    ))}
+                  </div>
                 </div>
               </div>
 
               <div style={{ display: 'flex', gap: '4px' }}>
+                {(ex.imageUrl || ex.notes) && (
+                  <button
+                    type="button"
+                    onClick={() => setExerciseForGuide(ex)}
+                    className="btn btn-secondary btn-icon"
+                    style={{ width: '32px', height: '32px', color: 'var(--primary)' }}
+                    title={language === 'es' ? 'Ver Guía del Ejercicio' : 'View Exercise Guide'}
+                  >
+                    <Eye size={14} />
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => setExerciseForChart(ex)}
@@ -243,6 +299,13 @@ export const ExercisesScreen: React.FC = () => {
           onClose={() => setExerciseForChart(null)}
         />
       </Modal>
+
+      {/* Exercise Guide Modal */}
+      <ExerciseGuideModal
+        isOpen={Boolean(exerciseForGuide)}
+        exercise={exerciseForGuide}
+        onClose={() => setExerciseForGuide(null)}
+      />
 
       {/* Form Modal */}
       <ExerciseFormModal

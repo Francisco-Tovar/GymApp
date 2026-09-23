@@ -402,15 +402,44 @@ export const fetchExercises = async (): Promise<Exercise[]> => {
   return unique;
 };
 
-export const insertExercise = async (name: string, muscleGroups: string): Promise<number> => {
+export const insertExercise = async (
+  name: string,
+  muscleGroups: string,
+  imageUrl?: string | null,
+  notes?: string | null
+): Promise<number> => {
   const existing = await db.exercises.where('name').equalsIgnoreCase(name.trim()).first();
-  if (existing && existing.id) return existing.id;
-  const id = await db.exercises.add({ name: name.trim(), muscle_groups: muscleGroups.trim() });
+  if (existing && existing.id) {
+    if (imageUrl !== undefined || notes !== undefined) {
+      await db.exercises.update(existing.id, {
+        ...(imageUrl !== undefined && { imageUrl }),
+        ...(notes !== undefined && { notes: notes?.trim() || null }),
+      });
+    }
+    return existing.id;
+  }
+  const id = await db.exercises.add({
+    name: name.trim(),
+    muscle_groups: muscleGroups.trim(),
+    imageUrl: imageUrl || null,
+    notes: notes?.trim() || null,
+  });
   return Number(id);
 };
 
-export const updateExercise = async (id: number, name: string, muscleGroups: string): Promise<void> => {
-  await db.exercises.update(id, { name: name.trim(), muscle_groups: muscleGroups.trim() });
+export const updateExercise = async (
+  id: number,
+  name: string,
+  muscleGroups: string,
+  imageUrl?: string | null,
+  notes?: string | null
+): Promise<void> => {
+  await db.exercises.update(id, {
+    name: name.trim(),
+    muscle_groups: muscleGroups.trim(),
+    ...(imageUrl !== undefined && { imageUrl }),
+    ...(notes !== undefined && { notes: notes?.trim() || null }),
+  });
 };
 
 export const deleteExercise = async (id: number): Promise<void> => {
