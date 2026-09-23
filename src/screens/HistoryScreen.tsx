@@ -148,7 +148,7 @@ export const HistoryScreen: React.FC = () => {
           }}
         >
           <TrendingUp size={15} />
-          <span>Overload Analytics</span>
+          <span>Progressive Overload</span>
         </button>
 
         <button
@@ -224,7 +224,7 @@ export const HistoryScreen: React.FC = () => {
                 }}
               >
                 <Layers size={13} />
-                <span>Routine Multi-Line</span>
+                <span>Routines</span>
               </button>
 
               <button
@@ -247,7 +247,7 @@ export const HistoryScreen: React.FC = () => {
                 }}
               >
                 <TrendingUp size={13} />
-                <span>Single Movement</span>
+                <span>Exercises</span>
               </button>
             </div>
           </div>
