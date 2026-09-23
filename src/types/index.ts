@@ -1,0 +1,43 @@
+export type WeightUnit = 'kg' | 'lb';
+
+export interface Exercise {
+  id: number;
+  name: string;
+  muscle_groups: string;
+}
+
+export interface Workout {
+  id: number;
+  name: string;
+  exercise_ids?: number[];
+  exercises?: Exercise[];
+}
+
+export interface WorkoutExercise {
+  workout_id: number;
+  exercise_id: number;
+}
+
+export interface Session {
+  id: number;
+  workout_id: number;
+  workout_name?: string;
+  date: string;
+  total_sets?: number;
+}
+
+export interface SessionSet {
+  id?: number;
+  session_id?: number;
+  exercise_id: number;
+  exercise_name?: string;
+  set_number: number;
+  weight: number;
+  reps: number;
+  unit: WeightUnit;
+}
+
+export interface ActiveExerciseState {
+  exercise: Exercise;
+  sets: SessionSet[];
+}
