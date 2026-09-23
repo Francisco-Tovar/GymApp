@@ -68,9 +68,9 @@ export const BodyMuscleMap: React.FC<BodyMuscleMapProps> = ({
 
   const getFill = (muscleKey: string): string => {
     if (activeMuscleMap[muscleKey]) {
-      return activeMuscleMap[muscleKey] > 1 ? '#F59E0B' : '#6366F1';
+      return activeMuscleMap[muscleKey] > 1 ? 'var(--warning)' : 'var(--primary)';
     }
-    return '#1E293B';
+    return 'var(--bg-elevated)';
   };
 
   const getStroke = (muscleKey: string): string => {
@@ -207,8 +207,8 @@ export const BodyMuscleMap: React.FC<BodyMuscleMapProps> = ({
                 >
                   <defs>
                     <linearGradient id="glowFront" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stopColor="#818CF8" stopOpacity="0.9" />
-                      <stop offset="100%" stopColor="#6366F1" stopOpacity="0.9" />
+                      <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.9" />
+                      <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.9" />
                     </linearGradient>
                   </defs>
 

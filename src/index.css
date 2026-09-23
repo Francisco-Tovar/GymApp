@@ -6,13 +6,16 @@ html.dark,
   --bg-surface-hover: #273549;
   --bg-elevated: #283548;
   --border-color: #334155;
-  --border-focus: #6366f1;
+  --border-focus: #f97316;
 
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --primary-glow: rgba(99, 102, 241, 0.25);
-  --accent: #38bdf8;
-  --accent-glow: rgba(56, 189, 248, 0.25);
+  /* Contrasting Theme Color: Vibrant Orange for Dark Mode */
+  --primary: #f97316;
+  --primary-hover: #ea580c;
+  --primary-glow: rgba(249, 115, 22, 0.35);
+  --primary-subtle: rgba(249, 115, 22, 0.15);
+  --primary-subtle-border: rgba(249, 115, 22, 0.35);
+  --accent: #fbbf24;
+  --accent-glow: rgba(251, 191, 36, 0.25);
 
   --success: #10b981;
   --success-glow: rgba(16, 185, 129, 0.2);
@@ -24,6 +27,12 @@ html.dark,
   --text-secondary: #cbd5e1;
   --text-muted: #94a3b8;
   --text-subtle: #64748b;
+
+  /* Top and Bottom Navigation Bars - Dark Mode */
+  --bg-header: rgba(15, 23, 42, 0.90);
+  --border-header: rgba(51, 65, 85, 0.65);
+  --bg-nav: rgba(15, 23, 42, 0.95);
+  --border-nav: rgba(51, 65, 85, 0.75);
 
   --font-heading: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   --font-body: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -45,11 +54,14 @@ html.light,
   --bg-surface-hover: #f1f5f9;
   --bg-elevated: #e2e8f0;
   --border-color: #cbd5e1;
-  --border-focus: #6366f1;
+  --border-focus: #2563eb;
 
-  --primary: #4f46e5;
-  --primary-hover: #4338ca;
-  --primary-glow: rgba(79, 70, 229, 0.25);
+  /* Contrasting Theme Color: Vibrant Blue for Light Mode */
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-glow: rgba(37, 99, 235, 0.25);
+  --primary-subtle: rgba(37, 99, 235, 0.12);
+  --primary-subtle-border: rgba(37, 99, 235, 0.3);
   --accent: #0284c7;
   --accent-glow: rgba(2, 132, 199, 0.25);
 
@@ -63,6 +75,13 @@ html.light,
   --text-secondary: #334155;
   --text-muted: #64748b;
   --text-subtle: #94a3b8;
+
+  /* Top and Bottom Navigation Bars - Light Mode */
+  --bg-header: rgba(255, 255, 255, 0.94);
+  --border-header: rgba(203, 213, 225, 0.85);
+  --bg-nav: rgba(255, 255, 255, 0.96);
+  --border-nav: rgba(203, 213, 225, 0.85);
+
   color-scheme: light;
 }
 
@@ -179,13 +198,14 @@ h1, h2, h3, h4, h5, h6 {
   top: 0;
   z-index: 40;
   padding: calc(12px + var(--safe-top)) 16px 12px;
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+  background: var(--bg-header);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border-header);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .main-content {
@@ -204,13 +224,15 @@ h1, h2, h3, h4, h5, h6 {
   max-width: 640px;
   z-index: 50;
   padding: 8px 12px calc(8px + var(--safe-bottom));
-  background: rgba(30, 41, 59, 0.92);
+  background: var(--bg-nav);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border-top: 1px solid var(--border-color);
+  border-top: 1px solid var(--border-nav);
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 8px;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .nav-tab-btn {
@@ -233,7 +255,12 @@ h1, h2, h3, h4, h5, h6 {
 
 .nav-tab-btn.active {
   color: var(--primary);
-  background: rgba(99, 102, 241, 0.12);
+  background: var(--primary-subtle);
+}
+
+.nav-tab-btn:hover:not(.active) {
+  color: var(--text-primary);
+  background: var(--bg-surface-hover);
 }
 
 .nav-tab-btn:active {
@@ -267,13 +294,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .btn-primary {
-  background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+  background: linear-gradient(135deg, var(--primary) 0%, var(--primary-hover) 100%);
   color: #ffffff;
   box-shadow: 0 4px 14px var(--primary-glow);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: linear-gradient(135deg, #7174f8 0%, #5850ec 100%);
+  filter: brightness(1.08);
 }
 
 .btn-secondary {
@@ -363,9 +390,9 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 .badge-primary {
-  background: rgba(99, 102, 241, 0.15);
-  color: #a5b4fc;
-  border: 1px solid rgba(99, 102, 241, 0.3);
+  background: var(--primary-subtle);
+  color: var(--primary);
+  border: 1px solid var(--primary-subtle-border);
 }
 
 .badge-accent {

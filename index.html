@@ -20,6 +20,8 @@
           var theme = (raw && JSON.parse(raw)?.state?.theme) || 'dark';
           document.documentElement.setAttribute('data-theme', theme);
           document.documentElement.classList.add(theme);
+          var meta = document.querySelector('meta[name="theme-color"]');
+          if (meta) meta.setAttribute('content', theme === 'dark' ? '#0f172a' : '#ffffff');
         } catch (e) {
           document.documentElement.setAttribute('data-theme', 'dark');
           document.documentElement.classList.add('dark');

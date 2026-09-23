@@ -90,12 +90,12 @@ export default function App() {
                 width: '32px',
                 height: '32px',
                 borderRadius: '8px',
-                backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                backgroundColor: 'var(--primary-subtle)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 color: 'var(--primary)',
-                border: '1px solid rgba(99, 102, 241, 0.3)',
+                border: '1px solid var(--primary-subtle-border)',
               }}
             >
               <Dumbbell size={18} />

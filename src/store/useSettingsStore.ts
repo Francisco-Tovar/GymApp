@@ -19,6 +19,11 @@ export function applyThemeToDocument(theme: AppTheme): void {
   root.setAttribute('data-theme', theme);
   root.classList.remove('dark', 'light');
   root.classList.add(theme);
+
+  const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+  if (metaThemeColor) {
+    metaThemeColor.setAttribute('content', theme === 'dark' ? '#0f172a' : '#ffffff');
+  }
 }
 
 export const useSettingsStore = create<SettingsState>()(

@@ -163,7 +163,7 @@ export const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            backgroundColor: 'rgba(99, 102, 241, 0.25)',
+            backgroundColor: 'var(--primary-subtle)',
             border: '1px solid var(--primary)',
             borderRadius: 'var(--radius-lg)',
             padding: '14px 18px',

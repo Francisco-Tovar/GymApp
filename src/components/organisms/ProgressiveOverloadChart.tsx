@@ -291,7 +291,7 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
                 width: '32px',
                 height: '32px',
                 borderRadius: '8px',
-                backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                backgroundColor: 'var(--primary-subtle)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -610,9 +610,9 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
             <defs>
               {/* Gradient fill beneath line */}
               <linearGradient id="overloadGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#6366f1" stopOpacity="0.35" />
-                <stop offset="80%" stopColor="#6366f1" stopOpacity="0.05" />
-                <stop offset="100%" stopColor="#6366f1" stopOpacity="0.0" />
+                <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.35" />
+                <stop offset="80%" stopColor="var(--primary)" stopOpacity="0.05" />
+                <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.0" />
               </linearGradient>
 
               {/* Point glow filter */}
@@ -667,7 +667,7 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
                 strokeLinejoin="round"
                 style={{
                   transition: 'd 0.3s ease-out',
-                  filter: 'drop-shadow(0px 2px 8px rgba(99, 102, 241, 0.5))',
+                  filter: 'drop-shadow(0px 2px 8px var(--primary-glow))',
                 }}
               />
             )}
@@ -693,7 +693,8 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
                     y1={padTop}
                     x2={targetCoord.x}
                     y2={chartHeight - padBottom}
-                    stroke="rgba(99, 102, 241, 0.45)"
+                    stroke="var(--primary)"
+                    strokeOpacity="0.5"
                     strokeWidth="1.5"
                     strokeDasharray="3 3"
                   />
@@ -734,7 +735,7 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
                       cx={point.x}
                       cy={point.y}
                       r="12"
-                      fill="rgba(99, 102, 241, 0.25)"
+                      fill="var(--primary-subtle)"
                       filter="url(#glow)"
                     />
                   )}
@@ -776,7 +777,7 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
           className="animate-fade-in"
           style={{
             backgroundColor: 'var(--bg-elevated)',
-            border: '1px solid rgba(99, 102, 241, 0.3)',
+            border: '1px solid var(--primary-subtle-border)',
             borderRadius: 'var(--radius-md)',
             padding: '12px 14px',
             display: 'flex',

@@ -133,10 +133,10 @@ export const Combobox: React.FC<ComboboxProps> = ({
             top: 'calc(100% + 4px)',
             left: 0,
             right: 0,
-            backgroundColor: '#1e293b',
+            backgroundColor: 'var(--bg-surface)',
             border: '1px solid var(--border-color)',
             borderRadius: 'var(--radius-sm)',
-            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.6)',
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.25)',
             padding: '4px',
             maxHeight: '240px',
             overflowY: 'auto',
@@ -177,16 +177,16 @@ export const Combobox: React.FC<ComboboxProps> = ({
                     borderRadius: 'var(--radius-xs, 6px)',
                     fontSize: isSmall ? '12px' : '13px',
                     fontWeight: isSelected ? 700 : 500,
-                    color: isSelected ? '#ffffff' : '#e2e8f0',
+                    color: isSelected ? 'var(--primary)' : 'var(--text-primary)',
                     backgroundColor: isSelected
-                      ? 'rgba(99, 102, 241, 0.25)'
+                      ? 'var(--primary-subtle)'
                       : 'transparent',
                     cursor: 'pointer',
                     transition: 'background-color 0.15s ease',
                   }}
                   onMouseEnter={(e) => {
                     if (!isSelected) {
-                      e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                      e.currentTarget.style.backgroundColor = 'var(--bg-surface-hover)';
                     }
                   }}
                   onMouseLeave={(e) => {

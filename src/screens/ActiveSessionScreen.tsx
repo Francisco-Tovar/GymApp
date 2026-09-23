@@ -251,9 +251,9 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
             fontWeight: 700,
             fontSize: '12px',
             padding: '6px 10px',
-            backgroundColor: 'rgba(99, 102, 241, 0.15)',
+            backgroundColor: 'var(--primary-subtle)',
             borderColor: 'var(--primary)',
-            color: '#a5b4fc',
+            color: 'var(--primary)',
           }}
         >
           <RefreshCw size={12} /> {activeUnit.toUpperCase()}

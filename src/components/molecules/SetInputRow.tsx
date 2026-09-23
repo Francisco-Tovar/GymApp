@@ -54,7 +54,7 @@ export const SetInputRow: React.FC<SetInputRowProps> = ({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: 'rgba(99, 102, 241, 0.12)',
+          backgroundColor: 'var(--primary-subtle)',
           borderRadius: 'var(--radius-sm)',
           color: 'var(--primary)',
           fontWeight: 700,

@@ -264,7 +264,7 @@ export const WorkoutBuilderModal: React.FC<WorkoutBuilderModalProps> = ({
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'space-between',
-                      backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.12)' : 'var(--bg-main)',
+                      backgroundColor: isSelected ? 'var(--primary-subtle)' : 'var(--bg-main)',
                       border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border-color)'}`,
                       borderRadius: 'var(--radius-sm)',
                       padding: '8px 12px',

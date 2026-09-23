@@ -144,8 +144,8 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
                     onClick={() => toggleMuscle(muscle)}
                     style={{
                       border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border-color)'}`,
-                      backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.2)' : 'var(--bg-main)',
-                      color: isSelected ? '#ffffff' : 'var(--text-secondary)',
+                      backgroundColor: isSelected ? 'var(--primary-subtle)' : 'var(--bg-main)',
+                      color: isSelected ? 'var(--primary)' : 'var(--text-secondary)',
                       borderRadius: 'var(--radius-full)',
                       padding: '5px 12px',
                       fontSize: '12px',

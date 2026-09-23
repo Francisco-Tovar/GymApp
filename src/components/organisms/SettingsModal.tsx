@@ -76,7 +76,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   width: '36px',
                   height: '36px',
                   borderRadius: '10px',
-                  backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                  backgroundColor: 'var(--primary-subtle)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
