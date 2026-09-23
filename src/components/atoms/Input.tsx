@@ -1,62 +1,50 @@
 import React from 'react';
-import { TextInput, View, StyleSheet, TextInputProps, ViewStyle, StyleProp } from 'react-native';
-import { Typography } from './Typography';
 
-interface InputProps extends TextInputProps {
+export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
-  containerStyle?: StyleProp<ViewStyle>;
 }
 
 export const Input: React.FC<InputProps> = ({
   label,
   error,
-  containerStyle,
+  className = '',
   style,
+  id,
   ...props
 }) => {
+  const inputId = id || (label ? label.toLowerCase().replace(/\s+/g, '-') : undefined);
+
   return (
-    <View style={[styles.container, containerStyle]}>
-      {label ? (
-        <Typography variant="label" color="#94A3B8" style={styles.label}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
+      {label && (
+        <label
+          htmlFor={inputId}
+          style={{
+            fontSize: '12px',
+            fontWeight: 600,
+            color: 'var(--text-secondary)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.04em',
+          }}
+        >
           {label}
-        </Typography>
-      ) : null}
-      <TextInput
-        placeholderTextColor="#64748B"
-        style={[styles.input, error ? styles.inputError : null, style]}
+        </label>
+      )}
+      <input
+        id={inputId}
+        className={`input-field ${className}`}
+        style={{
+          borderColor: error ? 'var(--danger)' : undefined,
+          ...style,
+        }}
         {...props}
       />
-      {error ? (
-        <Typography variant="caption" color="#EF4444" style={styles.errorText}>
+      {error && (
+        <span style={{ fontSize: '11px', color: 'var(--danger)', fontWeight: 500 }}>
           {error}
-        </Typography>
-      ) : null}
-    </View>
+        </span>
+      )}
+    </div>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    marginVertical: 6,
-  },
-  label: {
-    marginBottom: 6,
-  },
-  input: {
-    backgroundColor: '#1E293B',
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: '#334155',
-    color: '#F8FAFC',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-  },
-  inputError: {
-    borderColor: '#EF4444',
-  },
-  errorText: {
-    marginTop: 4,
-  },
-});

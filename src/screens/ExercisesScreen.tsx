@@ -1,214 +1,245 @@
-import React, { useState, useCallback } from 'react';
-import { View, StyleSheet, FlatList, RefreshControl, Modal } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import { ScreenLayout } from '../components/templates/ScreenLayout';
-import { ExerciseListItem } from '../components/molecules/ExerciseListItem';
-import { ExerciseFormModal } from '../components/organisms/ExerciseFormModal';
-import { Input } from '../components/atoms/Input';
-import { Button } from '../components/atoms/Button';
-import { Typography } from '../components/atoms/Typography';
+import React, { useState, useEffect } from 'react';
 import { Exercise } from '../types';
-import { fetchExercises, insertExercise, updateExercise, deleteExercise } from '../db/crud';
+import { fetchExercises, insertExercise, updateExercise, deleteExercise } from '../db/db';
+import { Typography } from '../components/atoms/Typography';
+import { Button } from '../components/atoms/Button';
+import { Card } from '../components/atoms/Card';
+import { Badge } from '../components/atoms/Badge';
+import { Modal } from '../components/atoms/Modal';
+import { ExerciseFormModal } from '../components/organisms/ExerciseFormModal';
+import { Plus, Search, Edit2, Trash2, Library, Dumbbell } from 'lucide-react';
 
 export const ExercisesScreen: React.FC = () => {
   const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [modalVisible, setModalVisible] = useState(false);
-  const [editingExercise, setEditingExercise] = useState<Exercise | null>(null);
-  const [exerciseToDelete, setExerciseToDelete] = useState<Exercise | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('All');
+  const [loading, setLoading] = useState(true);
 
-  const loadExercises = async () => {
+  // Modals
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [exerciseToEdit, setExerciseToEdit] = useState<Exercise | null>(null);
+  const [exerciseToDelete, setExerciseToDelete] = useState<Exercise | null>(null);
+
+  const loadData = async () => {
     try {
+      setLoading(true);
       const data = await fetchExercises();
       setExercises(data);
     } catch (err) {
-      console.error('Failed to fetch exercises:', err);
+      console.error('Failed to load exercises:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
-  useFocusEffect(
-    useCallback(() => {
-      loadExercises();
-    }, [])
-  );
-
-  const handleRefresh = async () => {
-    setRefreshing(true);
-    await loadExercises();
-    setRefreshing(false);
-  };
-
-  const handleOpenAdd = () => {
-    setEditingExercise(null);
-    setModalVisible(true);
-  };
-
-  const handleOpenEdit = (exercise: Exercise) => {
-    setEditingExercise(exercise);
-    setModalVisible(true);
-  };
+  useEffect(() => {
+    loadData();
+  }, []);
 
   const handleSaveExercise = async (name: string, muscleGroups: string) => {
-    if (editingExercise) {
-      await updateExercise(editingExercise.id, name, muscleGroups);
+    if (exerciseToEdit?.id) {
+      await updateExercise(exerciseToEdit.id, name, muscleGroups);
     } else {
       await insertExercise(name, muscleGroups);
     }
-    setEditingExercise(null);
-    await loadExercises();
+    await loadData();
+    setExerciseToEdit(null);
   };
 
-  const confirmDeleteExercise = async () => {
-    if (!exerciseToDelete) return;
-    try {
-      await deleteExercise(exerciseToDelete.id);
-      setExerciseToDelete(null);
-      await loadExercises();
-    } catch (err) {
-      console.error('Failed to delete exercise:', err);
-    }
+  const confirmDelete = async () => {
+    if (!exerciseToDelete?.id) return;
+    await deleteExercise(exerciseToDelete.id);
+    setExerciseToDelete(null);
+    await loadData();
   };
+
+  const categories = ['All', 'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Abs'];
 
   const filteredExercises = exercises.filter((ex) => {
-    const q = searchQuery.toLowerCase();
-    return (
-      ex.name.toLowerCase().includes(q) ||
-      ex.muscle_groups.toLowerCase().includes(q)
-    );
+    const matchesSearch =
+      ex.name.toLowerCase().includes(search.toLowerCase()) ||
+      ex.muscle_groups.toLowerCase().includes(search.toLowerCase());
+
+    if (!matchesSearch) return false;
+    if (selectedCategory === 'All') return true;
+
+    if (selectedCategory === 'Legs') {
+      return (
+        ex.muscle_groups.toLowerCase().includes('quad') ||
+        ex.muscle_groups.toLowerCase().includes('hamstring') ||
+        ex.muscle_groups.toLowerCase().includes('glute') ||
+        ex.muscle_groups.toLowerCase().includes('calf')
+      );
+    }
+
+    return ex.muscle_groups.toLowerCase().includes(selectedCategory.toLowerCase());
   });
 
   return (
-    <ScreenLayout
-      title="Exercises"
-      subtitle="Manage exercise library and target muscles"
-      showUnitToggle={false}
-    >
-      <View style={styles.headerArea}>
-        <Button
-          title="+ Add Custom Exercise"
-          variant="primary"
-          onPress={handleOpenAdd}
-          style={styles.addBtn}
-        />
-        <Input
-          placeholder="Search by exercise name or muscle..."
-          value={searchQuery}
-          onChangeText={setSearchQuery}
-          containerStyle={styles.searchInput}
-        />
-      </View>
-
-      {filteredExercises.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Typography variant="body" color="#94A3B8" align="center">
-            No exercises match your search.
+    <div className="animate-fade-in">
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <div>
+          <Typography variant="h1">Exercise Library</Typography>
+          <Typography variant="caption" color="var(--text-muted)">
+            {exercises.length} movements available
           </Typography>
-        </View>
-      ) : (
-        <FlatList
-          data={filteredExercises}
-          keyExtractor={(item) => item.id.toString()}
-          renderItem={({ item }) => (
-            <ExerciseListItem
-              exercise={item}
-              onEdit={() => handleOpenEdit(item)}
-              onDelete={() => setExerciseToDelete(item)}
-            />
-          )}
-          contentContainerStyle={styles.listContent}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={handleRefresh}
-              tintColor="#6366F1"
-            />
-          }
+        </div>
+
+        <Button
+          variant="primary"
+          size="sm"
+          leftIcon={<Plus size={16} />}
+          onClick={() => {
+            setExerciseToEdit(null);
+            setIsModalOpen(true);
+          }}
+        >
+          Add Exercise
+        </Button>
+      </div>
+
+      {/* Search Input */}
+      <div style={{ position: 'relative', marginBottom: '12px' }}>
+        <Search size={16} style={{ position: 'absolute', left: '12px', top: '12px', color: 'var(--text-muted)' }} />
+        <input
+          type="text"
+          placeholder="Search movements or muscles..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="input-field"
+          style={{ paddingLeft: '36px' }}
         />
+      </div>
+
+      {/* Category Filter Pills */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '6px',
+          overflowX: 'auto',
+          paddingBottom: '8px',
+          marginBottom: '12px',
+        }}
+      >
+        {categories.map((cat) => (
+          <button
+            key={cat}
+            type="button"
+            onClick={() => setSelectedCategory(cat)}
+            style={{
+              padding: '6px 12px',
+              fontSize: '12px',
+              fontWeight: 600,
+              borderRadius: 'var(--radius-full)',
+              border: `1px solid ${selectedCategory === cat ? 'var(--primary)' : 'var(--border-color)'}`,
+              backgroundColor: selectedCategory === cat ? 'rgba(99, 102, 241, 0.2)' : 'var(--bg-surface)',
+              color: selectedCategory === cat ? '#ffffff' : 'var(--text-secondary)',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            {cat}
+          </button>
+        ))}
+      </div>
+
+      {/* Exercise List */}
+      {loading ? (
+        <div style={{ textAlign: 'center', padding: '40px 0' }}>
+          <Typography variant="body" color="var(--text-muted)">
+            Loading library...
+          </Typography>
+        </div>
+      ) : filteredExercises.length === 0 ? (
+        <div style={{ textAlign: 'center', padding: '40px 0' }}>
+          <Library size={48} style={{ color: 'var(--text-subtle)', marginBottom: '12px' }} />
+          <Typography variant="h3" style={{ marginBottom: '6px' }}>
+            No Movements Found
+          </Typography>
+          <Typography variant="caption" color="var(--text-muted)">
+            Try adjusting your search filter or add a new exercise to your library.
+          </Typography>
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {filteredExercises.map((ex) => (
+            <Card key={ex.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
+              <div style={{ flex: 1, minWidth: 0, paddingRight: '12px' }}>
+                <Typography variant="h3" style={{ fontSize: '15px', marginBottom: '4px' }}>
+                  {ex.name}
+                </Typography>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                  {ex.muscle_groups.split(',').map((m, idx) => (
+                    <Badge key={idx} variant="primary">
+                      {m.trim()}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setExerciseToEdit(ex);
+                    setIsModalOpen(true);
+                  }}
+                  className="btn btn-secondary btn-icon"
+                  style={{ width: '32px', height: '32px' }}
+                  title="Edit Exercise"
+                >
+                  <Edit2 size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExerciseToDelete(ex)}
+                  className="btn btn-danger btn-icon"
+                  style={{ width: '32px', height: '32px' }}
+                  title="Delete Exercise"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            </Card>
+          ))}
+        </div>
       )}
 
+      {/* Form Modal */}
       <ExerciseFormModal
-        visible={modalVisible}
-        exerciseToEdit={editingExercise}
+        isOpen={isModalOpen}
+        exerciseToEdit={exerciseToEdit}
         onClose={() => {
-          setModalVisible(false);
-          setEditingExercise(null);
+          setIsModalOpen(false);
+          setExerciseToEdit(null);
         }}
         onSubmit={handleSaveExercise}
       />
 
-      {/* Delete Exercise Confirmation Modal */}
-      <Modal visible={Boolean(exerciseToDelete)} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Typography variant="h2" color="#F8FAFC" style={{ marginBottom: 8 }}>
-              Delete Exercise?
-            </Typography>
-            <Typography variant="body" color="#94A3B8" style={{ marginBottom: 20 }}>
-              Are you sure you want to delete "{exerciseToDelete?.name}" from your exercise library?
-            </Typography>
-            <View style={styles.modalButtonRow}>
-              <Button
-                title="Cancel"
-                variant="secondary"
-                onPress={() => setExerciseToDelete(null)}
-                style={styles.flexBtn}
-              />
-              <Button
-                title="Delete Exercise"
-                variant="primary"
-                onPress={confirmDeleteExercise}
-                style={[styles.flexBtn, { marginLeft: 10, backgroundColor: '#EF4444' }]}
-              />
-            </View>
-          </View>
-        </View>
+      {/* Delete Confirmation Modal */}
+      <Modal
+        isOpen={Boolean(exerciseToDelete)}
+        onClose={() => setExerciseToDelete(null)}
+        position="center"
+        maxWidth="440px"
+      >
+        <Typography variant="h2" style={{ marginBottom: '8px' }}>
+          Delete Exercise?
+        </Typography>
+        <Typography variant="body" color="var(--text-secondary)" style={{ marginBottom: '20px' }}>
+          Are you sure you want to remove <strong>"{exerciseToDelete?.name}"</strong>? It will also be removed from any workouts and history.
+        </Typography>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <Button variant="secondary" onClick={() => setExerciseToDelete(null)} style={{ flex: 1 }}>
+            Cancel
+          </Button>
+          <Button variant="danger" onClick={confirmDelete} style={{ flex: 1 }}>
+            Delete Exercise
+          </Button>
+        </div>
       </Modal>
-    </ScreenLayout>
+    </div>
   );
 };
-
-const styles = StyleSheet.create({
-  headerArea: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-  },
-  addBtn: {
-    marginBottom: 8,
-  },
-  searchInput: {
-    marginVertical: 4,
-  },
-  listContent: {
-    padding: 16,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalCard: {
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  modalButtonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  flexBtn: {
-    flex: 1,
-  },
-});

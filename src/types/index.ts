@@ -1,7 +1,7 @@
-export type WeightUnit = 'kg' | 'lb';
+export type WeightUnit = 'lb' | 'kg';
 
 export interface Exercise {
-  id: number;
+  id?: number;
   name: string;
   muscle_groups: string;
 }
@@ -9,13 +9,8 @@ export interface Exercise {
 export interface Workout {
   id: number;
   name: string;
-  exercise_ids?: number[];
   exercises?: Exercise[];
-}
-
-export interface WorkoutExercise {
-  workout_id: number;
-  exercise_id: number;
+  exercise_ids?: number[];
 }
 
 export interface Session {
@@ -37,7 +32,8 @@ export interface SessionSet {
   unit: WeightUnit;
 }
 
-export interface ActiveExerciseState {
-  exercise: Exercise;
-  sets: SessionSet[];
+export interface WorkoutExercise {
+  id?: number;
+  workout_id: number;
+  exercise_id: number;
 }

@@ -1,7 +1,7 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { WeightUnit } from '../../types';
 import { Typography } from '../atoms/Typography';
+import { Minus, Plus, X } from 'lucide-react';
 
 interface SetInputRowProps {
   setNumber: number;
@@ -22,100 +22,197 @@ export const SetInputRow: React.FC<SetInputRowProps> = ({
   onUpdateReps,
   onRemoveSet,
 }) => {
+  const adjustWeight = (delta: number) => {
+    const current = parseFloat(weight) || 0;
+    const next = Math.max(0, current + delta);
+    onUpdateWeight(next.toString());
+  };
+
+  const adjustReps = (delta: number) => {
+    const current = parseInt(reps, 10) || 0;
+    const next = Math.max(0, current + delta);
+    onUpdateReps(next.toString());
+  };
+
   return (
-    <View style={styles.container}>
-      <View style={styles.setNumberBox}>
-        <Typography variant="body" bold color="#6366F1">
-          #{setNumber}
-        </Typography>
-      </View>
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '6px',
+        backgroundColor: 'var(--bg-main)',
+        borderRadius: 'var(--radius-md)',
+        padding: '8px 10px',
+        margin: '6px 0',
+        border: '1px solid var(--border-color)',
+      }}
+    >
+      <div
+        style={{
+          width: '28px',
+          height: '28px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          backgroundColor: 'rgba(99, 102, 241, 0.12)',
+          borderRadius: 'var(--radius-sm)',
+          color: 'var(--primary)',
+          fontWeight: 700,
+          fontSize: '13px',
+          flexShrink: 0,
+        }}
+      >
+        #{setNumber}
+      </div>
 
-      <View style={styles.inputGroup}>
-        <TextInput
-          style={styles.numericInput}
-          keyboardType="numeric"
-          placeholder="0"
-          placeholderTextColor="#64748B"
-          value={weight}
-          onChangeText={onUpdateWeight}
-        />
-        <Typography variant="caption" color="#94A3B8" style={styles.unitLabel}>
-          {unit}
-        </Typography>
-      </View>
+      {/* Weight Controls */}
+      <div style={{ flex: 1.2, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+          <button
+            type="button"
+            onClick={() => adjustWeight(-5)}
+            title="-5"
+            style={{
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <Minus size={14} />
+          </button>
+          <input
+            type="number"
+            step="any"
+            value={weight}
+            onChange={(e) => onUpdateWeight(e.target.value)}
+            placeholder="0"
+            className="input-field"
+            style={{
+              padding: '6px 28px 6px 6px',
+              textAlign: 'center',
+              fontWeight: 600,
+              fontSize: '15px',
+            }}
+          />
+          <span
+            style={{
+              position: 'absolute',
+              right: '26px',
+              fontSize: '11px',
+              color: 'var(--text-muted)',
+              pointerEvents: 'none',
+              fontWeight: 500,
+            }}
+          >
+            {unit}
+          </span>
+          <button
+            type="button"
+            onClick={() => adjustWeight(5)}
+            title="+5"
+            style={{
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <Plus size={14} />
+          </button>
+        </div>
+      </div>
 
-      <View style={styles.inputGroup}>
-        <TextInput
-          style={styles.numericInput}
-          keyboardType="number-pad"
-          placeholder="0"
-          placeholderTextColor="#64748B"
-          value={reps}
-          onChangeText={onUpdateReps}
-        />
-        <Typography variant="caption" color="#94A3B8" style={styles.unitLabel}>
-          reps
-        </Typography>
-      </View>
+      {/* Reps Controls */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+          <button
+            type="button"
+            onClick={() => adjustReps(-1)}
+            title="-1"
+            style={{
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <Minus size={14} />
+          </button>
+          <input
+            type="number"
+            value={reps}
+            onChange={(e) => onUpdateReps(e.target.value)}
+            placeholder="0"
+            className="input-field"
+            style={{
+              padding: '6px 32px 6px 6px',
+              textAlign: 'center',
+              fontWeight: 600,
+              fontSize: '15px',
+            }}
+          />
+          <span
+            style={{
+              position: 'absolute',
+              right: '24px',
+              fontSize: '11px',
+              color: 'var(--text-muted)',
+              pointerEvents: 'none',
+              fontWeight: 500,
+            }}
+          >
+            reps
+          </span>
+          <button
+            type="button"
+            onClick={() => adjustReps(1)}
+            title="+1"
+            style={{
+              border: 'none',
+              background: 'transparent',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              padding: '4px',
+              display: 'flex',
+              alignItems: 'center',
+            }}
+          >
+            <Plus size={14} />
+          </button>
+        </div>
+      </div>
 
-      <TouchableOpacity onPress={onRemoveSet} style={styles.removeBtn}>
-        <Typography variant="body" color="#EF4444" bold>
-          ✕
-        </Typography>
-      </TouchableOpacity>
-    </View>
+      {/* Remove Button */}
+      <button
+        type="button"
+        onClick={onRemoveSet}
+        title="Remove Set"
+        style={{
+          border: 'none',
+          backgroundColor: 'transparent',
+          color: 'var(--danger)',
+          cursor: 'pointer',
+          padding: '6px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: 'var(--radius-sm)',
+          opacity: 0.8,
+          transition: 'opacity 0.15s ease',
+        }}
+      >
+        <X size={16} />
+      </button>
+    </div>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#0F172A',
-    borderRadius: 10,
-    padding: 6,
-    marginVertical: 4,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  setNumberBox: {
-    width: 28,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  inputGroup: {
-    flex: 1,
-    minWidth: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#1E293B',
-    borderRadius: 8,
-    paddingLeft: 8,
-    paddingRight: 28,
-    marginHorizontal: 3,
-    height: 40,
-    borderWidth: 1,
-    borderColor: '#334155',
-    position: 'relative',
-  },
-  numericInput: {
-    flex: 1,
-    minWidth: 0,
-    color: '#F8FAFC',
-    fontSize: 15,
-    fontWeight: '600',
-    textAlign: 'center',
-    padding: 0,
-  },
-  unitLabel: {
-    position: 'absolute',
-    right: 8,
-    pointerEvents: 'none',
-  },
-  removeBtn: {
-    width: 28,
-    height: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-});

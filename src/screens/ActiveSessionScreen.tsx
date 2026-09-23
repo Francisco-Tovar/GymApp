@@ -1,22 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, ScrollView, Alert, Modal } from 'react-native';
-import { useRoute, useNavigation } from '@react-navigation/native';
-import { ScreenLayout } from '../components/templates/ScreenLayout';
-import { ActiveSetLogger } from '../components/organisms/ActiveSetLogger';
-import { BodyMuscleMap } from '../components/organisms/BodyMuscleMap';
+import React, { useState, useEffect, useRef } from 'react';
+import { useActiveWorkoutStore } from '../store/useActiveWorkoutStore';
+import { useSettingsStore } from '../store/useSettingsStore';
+import { fetchWorkoutById, fetchHeaviestWeightsMap, saveCompletedSession } from '../db/db';
+import { SessionSet, WeightUnit } from '../types';
 import { Typography } from '../components/atoms/Typography';
 import { Button } from '../components/atoms/Button';
-import { useSettingsStore } from '../store/useSettingsStore';
-import { useActiveWorkoutStore, ExerciseSetsMap } from '../store/useActiveWorkoutStore';
-import { SessionSet } from '../types';
-import { fetchWorkoutById, saveCompletedSession, fetchHeaviestWeightsMap } from '../db/crud';
+import { Modal } from '../components/atoms/Modal';
+import { ActiveSetLogger } from '../components/organisms/ActiveSetLogger';
+import { BodyMuscleMap } from '../components/organisms/BodyMuscleMap';
+import { requestWakeLock, releaseWakeLock, triggerVibration } from '../utils/hardwareApis';
+import { ArrowLeft, Clock, Timer, Check, AlertTriangle, ShieldCheck, RefreshCw } from 'lucide-react';
 
-export const ActiveSessionScreen: React.FC = () => {
-  const route = useRoute<any>();
-  const navigation = useNavigation<any>();
-  const { unit } = useSettingsStore();
+interface ActiveSessionScreenProps {
+  workoutId?: number | null;
+  workoutName?: string;
+  onFinishOrCancel: () => void;
+}
 
-  const { workoutId, workoutName } = route.params || {};
+export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
+  workoutId,
+  workoutName,
+  onFinishOrCancel,
+}) => {
+  const { unit, toggleUnit } = useSettingsStore();
 
   const {
     isActive,
@@ -24,8 +30,8 @@ export const ActiveSessionScreen: React.FC = () => {
     workoutName: activeWorkoutName,
     exercises,
     exerciseSetsMap,
-    currentDate,
     unit: activeUnit,
+    startTime,
     startWorkout,
     addSet,
     removeSet,
@@ -38,8 +44,29 @@ export const ActiveSessionScreen: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
-  // Sync unit changes from global settings to active workout weights
+  // Rest Timer State
+  const [restTimerSeconds, setRestTimerSeconds] = useState<number | null>(null);
+  const restTimerRef = useRef<number | null>(null);
+
+  // Wake Lock state
+  const [wakeLockActive, setWakeLockActive] = useState(false);
+
+  // Activate Wake Lock when session is open
+  useEffect(() => {
+    let mounted = true;
+    requestWakeLock().then((active) => {
+      if (mounted) setWakeLockActive(active);
+    });
+
+    return () => {
+      mounted = false;
+      releaseWakeLock();
+    };
+  }, []);
+
+  // Sync unit changes from global settings
   useEffect(() => {
     if (isActive && unit !== activeUnit) {
       convertUnit(unit);
@@ -50,229 +77,344 @@ export const ActiveSessionScreen: React.FC = () => {
   useEffect(() => {
     if (workoutId) {
       if (!isActive || activeWorkoutId !== workoutId) {
-        initWorkoutSession();
+        initSession(workoutId, workoutName);
       }
     }
   }, [workoutId]);
 
-  const initWorkoutSession = async () => {
+  // Elapsed time counter
+  useEffect(() => {
+    if (!startTime) return;
+    const interval = window.setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startTime) / 1000));
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [startTime]);
+
+  // Rest timer countdown
+  useEffect(() => {
+    if (restTimerSeconds === null) return;
+
+    if (restTimerSeconds <= 0) {
+      triggerVibration([300, 150, 300]);
+      setRestTimerSeconds(null);
+      return;
+    }
+
+    restTimerRef.current = window.setTimeout(() => {
+      setRestTimerSeconds((prev) => (prev !== null && prev > 0 ? prev - 1 : null));
+    }, 1000);
+
+    return () => {
+      if (restTimerRef.current) clearTimeout(restTimerRef.current);
+    };
+  }, [restTimerSeconds]);
+
+  const initSession = async (id: number, name?: string) => {
     try {
       setLoading(true);
-      const workout = await fetchWorkoutById(workoutId);
+      const workout = await fetchWorkoutById(id);
       if (workout && workout.exercises) {
-        const exerciseIds = workout.exercises.map((e) => e.id);
+        const exerciseIds = workout.exercises.map((e) => e.id as number);
         const maxWeightsMap = await fetchHeaviestWeightsMap(exerciseIds, unit);
 
-        const initialMap: ExerciseSetsMap = {};
+        const initialMap: Record<number, any[]> = {};
         workout.exercises.forEach((ex) => {
-          const maxW = maxWeightsMap[ex.id];
+          const maxW = maxWeightsMap[ex.id as number];
           const initialWeight = maxW !== undefined && maxW > 0 ? maxW.toString() : '0';
-          initialMap[ex.id] = [{ id: '1', weight: initialWeight, reps: '0' }];
+          initialMap[ex.id as number] = [{ id: '1', weight: initialWeight, reps: '0' }];
         });
 
         startWorkout(
-          workoutId,
-          workoutName || workout.name || 'Active Workout',
+          id,
+          name || workout.name || 'Active Workout',
           workout.exercises,
           initialMap,
           unit
         );
       }
     } catch (err) {
-      console.error('Failed to load workout exercises:', err);
+      console.error('Failed to init session:', err);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleFinishWorkout = async () => {
-    if (loading) return;
+  const startRestTimer = (seconds: number) => {
+    setRestTimerSeconds(seconds);
+  };
 
-    // Compile all sets
+  const handleFinish = async () => {
+    if (loading || !activeWorkoutId) return;
+
     const sessionSets: SessionSet[] = [];
     exercises.forEach((ex) => {
-      const sets = exerciseSetsMap[ex.id] || [];
+      const sets = exerciseSetsMap[ex.id as number] || [];
       sets.forEach((setItem, index) => {
         const weightNum = parseFloat(setItem.weight) || 0;
         const repsNum = parseInt(setItem.reps, 10) || 0;
         sessionSets.push({
-          exercise_id: ex.id,
+          exercise_id: ex.id as number,
           set_number: index + 1,
           weight: weightNum,
           reps: repsNum,
-          unit: unit,
+          unit: activeUnit,
         });
       });
     });
 
-    if (sessionSets.length === 0) {
-      Alert.alert('No Sets Logged', 'Please add at least one set before saving.');
-      return;
-    }
-
     try {
       setLoading(true);
-      await saveCompletedSession(workoutId || activeWorkoutId, currentDate, sessionSets);
+      await saveCompletedSession(activeWorkoutId, new Date().toISOString(), sessionSets);
+      triggerVibration([100, 100, 200]);
       clearActiveWorkout();
-      navigation.navigate('HistoryTab');
+      releaseWakeLock();
+      onFinishOrCancel();
     } catch (err) {
       console.error('Failed to save session:', err);
-      Alert.alert('Error', 'Could not save session. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleDiscard = () => {
-    setShowCancelModal(false);
+  const handleCancelWorkout = () => {
     clearActiveWorkout();
-    navigation.navigate('WorkoutsList');
+    releaseWakeLock();
+    setShowCancelModal(false);
+    onFinishOrCancel();
   };
 
-  const formattedDate = new Date(currentDate || Date.now()).toLocaleDateString(undefined, {
-    weekday: 'long',
-    month: 'short',
-    day: 'numeric',
-  });
+  const formatTimer = (sec: number): string => {
+    const mins = Math.floor(sec / 60);
+    const s = sec % 60;
+    return `${mins.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
 
-  const selectedMuscleGroups = exercises.map((ex) => ex.muscle_groups);
+  const muscleGroups = exercises.map((e) => e.muscle_groups);
 
   return (
-    <ScreenLayout
-      title={activeWorkoutName || workoutName || 'Active Workout'}
-      subtitle={`Session Date: ${formattedDate}`}
-      showUnitToggle
-    >
-      <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
-        {/* Muscle Group Anatomy Heatmap - collapsed by default */}
-        {exercises.length > 0 && (
-          <View style={styles.anatomySection}>
-            <BodyMuscleMap
-              selectedMuscleGroups={selectedMuscleGroups}
-              title="Muscle Coverage"
-              collapsible
-              defaultCollapsed={true}
-            />
-          </View>
-        )}
+    <div className="animate-fade-in" style={{ paddingBottom: '40px' }}>
+      {/* Top Session Bar */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          marginBottom: '16px',
+        }}
+      >
+        <button
+          type="button"
+          onClick={onFinishOrCancel}
+          className="btn btn-secondary btn-icon"
+          title="Back to workouts"
+          style={{ width: '36px', height: '36px' }}
+        >
+          <ArrowLeft size={18} />
+        </button>
 
-        {exercises.length === 0 ? (
-          <Typography variant="body" color="#94A3B8" align="center" style={styles.emptyText}>
-            {loading ? 'Loading workout...' : 'No exercises assigned to this workout routine yet.'}
+        <div style={{ textAlign: 'center' }}>
+          <Typography variant="h2" style={{ fontSize: '18px' }}>
+            {activeWorkoutName || 'Active Workout'}
           </Typography>
-        ) : (
-          exercises.map((ex, idx) => (
-            <ActiveSetLogger
-              key={ex.id}
-              exercise={ex}
-              sets={exerciseSetsMap[ex.id] || []}
-              unit={unit}
-              onAddSet={() => addSet(ex.id)}
-              onRemoveSet={(index) => removeSet(ex.id, index)}
-              onUpdateSet={(index, field, value) => updateSet(ex.id, index, field, value)}
-              onMoveUp={() => moveExerciseUp(idx)}
-              onMoveDown={() => moveExerciseDown(idx)}
-              canMoveUp={idx > 0}
-              canMoveDown={idx < exercises.length - 1}
-            />
-          ))
-        )}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '12px', color: 'var(--accent)' }}>
+              <Clock size={12} /> {formatTimer(elapsedSeconds)}
+            </span>
+            {wakeLockActive && (
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  fontSize: '10px',
+                  color: 'var(--success)',
+                  backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                  padding: '1px 6px',
+                  borderRadius: 'var(--radius-full)',
+                }}
+              >
+                <ShieldCheck size={10} /> Screen Awake
+              </span>
+            )}
+          </div>
+        </div>
 
-        <View style={styles.actionContainer}>
-          <Button
-            title="Cancel Workout"
-            variant="ghost"
-            size="large"
-            onPress={() => setShowCancelModal(true)}
-            style={styles.discardBtn}
-            textStyle={{ color: '#EF4444' }}
-          />
-          <Button
-            title="Finish & Save Workout"
-            variant="primary"
-            size="large"
-            loading={loading}
-            onPress={handleFinishWorkout}
-            style={styles.finishBtn}
-          />
-        </View>
-      </ScrollView>
+        {/* Unit Toggle Button */}
+        <button
+          type="button"
+          onClick={toggleUnit}
+          title="Switch weight unit (lb / kg)"
+          className="btn btn-secondary btn-sm"
+          style={{
+            fontWeight: 700,
+            fontSize: '12px',
+            padding: '6px 10px',
+            backgroundColor: 'rgba(99, 102, 241, 0.15)',
+            borderColor: 'var(--primary)',
+            color: '#a5b4fc',
+          }}
+        >
+          <RefreshCw size={12} /> {activeUnit.toUpperCase()}
+        </button>
+      </div>
 
-      {/* Confirmation Modal */}
-      <Modal visible={showCancelModal} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            <Typography variant="h2" color="#F8FAFC" style={{ marginBottom: 8 }}>
-              Cancel Workout?
-            </Typography>
-            <Typography variant="body" color="#94A3B8" style={{ marginBottom: 20 }}>
-              Are you sure you want to exit? All logged sets for this workout session will be discarded.
-            </Typography>
-            <View style={styles.modalButtonRow}>
-              <Button
-                title="Keep Training"
-                variant="secondary"
-                onPress={() => setShowCancelModal(false)}
-                style={styles.flexBtn}
-              />
-              <Button
-                title="Discard Workout"
-                variant="primary"
-                onPress={handleDiscard}
-                style={[styles.flexBtn, { marginLeft: 10, backgroundColor: '#EF4444' }]}
-              />
-            </View>
-          </View>
-        </View>
+      {/* Rest Timer Floating Strip */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          backgroundColor: 'var(--bg-surface)',
+          border: '1px solid var(--border-color)',
+          borderRadius: 'var(--radius-md)',
+          padding: '8px 12px',
+          marginBottom: '16px',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Timer size={16} color="var(--primary)" />
+          <Typography variant="label" color="var(--text-secondary)">
+            Rest:
+          </Typography>
+          {restTimerSeconds !== null ? (
+            <span
+              style={{
+                fontFamily: 'monospace',
+                fontSize: '15px',
+                fontWeight: 700,
+                color: restTimerSeconds < 10 ? 'var(--danger)' : 'var(--accent)',
+              }}
+            >
+              {formatTimer(restTimerSeconds)}
+            </span>
+          ) : (
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Off</span>
+          )}
+        </div>
+
+        <div style={{ display: 'flex', gap: '4px' }}>
+          {[30, 60, 90, 120].map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => startRestTimer(s)}
+              style={{
+                border: '1px solid var(--border-color)',
+                backgroundColor: restTimerSeconds === s ? 'var(--primary)' : 'var(--bg-main)',
+                color: restTimerSeconds === s ? '#ffffff' : 'var(--text-secondary)',
+                borderRadius: '6px',
+                padding: '4px 8px',
+                fontSize: '11px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
+            >
+              {s}s
+            </button>
+          ))}
+          {restTimerSeconds !== null && (
+            <button
+              type="button"
+              onClick={() => setRestTimerSeconds(null)}
+              style={{
+                border: 'none',
+                background: 'transparent',
+                color: 'var(--danger)',
+                padding: '4px',
+                cursor: 'pointer',
+                fontSize: '11px',
+                fontWeight: 600,
+              }}
+            >
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Muscle Heatmap Diagram */}
+      <BodyMuscleMap
+        selectedMuscleGroups={muscleGroups}
+        title="Session Muscle Activation"
+        collapsible={true}
+        defaultCollapsed={true}
+      />
+
+      {/* Exercises & Set Loggers */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        {exercises.map((ex, index) => (
+          <ActiveSetLogger
+            key={ex.id}
+            exercise={ex}
+            sets={exerciseSetsMap[ex.id as number] || []}
+            unit={activeUnit}
+            onAddSet={() => addSet(ex.id as number)}
+            onRemoveSet={(setIdx) => removeSet(ex.id as number, setIdx)}
+            onUpdateSet={(setIdx, field, val) => updateSet(ex.id as number, setIdx, field, val)}
+            canMoveUp={index > 0}
+            canMoveDown={index < exercises.length - 1}
+            onMoveUp={() => moveExerciseUp(index)}
+            onMoveDown={() => moveExerciseDown(index)}
+          />
+        ))}
+      </div>
+
+      {/* Inline Session Action Buttons */}
+      <div
+        style={{
+          display: 'flex',
+          gap: '12px',
+          marginTop: '28px',
+          paddingTop: '8px',
+        }}
+      >
+        <Button
+          type="button"
+          variant="danger"
+          size="lg"
+          onClick={() => setShowCancelModal(true)}
+          style={{ flex: 1 }}
+        >
+          Cancel
+        </Button>
+        <Button
+          type="button"
+          variant="success"
+          size="lg"
+          leftIcon={<Check size={18} />}
+          onClick={handleFinish}
+          disabled={loading}
+          style={{ flex: 2 }}
+        >
+          {loading ? 'Saving...' : 'Finish Workout'}
+        </Button>
+      </div>
+
+      {/* Cancel Confirmation Modal */}
+      <Modal
+        isOpen={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        position="center"
+        maxWidth="440px"
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+          <AlertTriangle size={24} color="var(--danger)" />
+          <Typography variant="h2">Cancel Session?</Typography>
+        </div>
+        <Typography variant="body" color="var(--text-secondary)" style={{ marginBottom: '20px' }}>
+          Are you sure you want to discard this workout? Any unlogged sets will be lost.
+        </Typography>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <Button variant="secondary" onClick={() => setShowCancelModal(false)} style={{ flex: 1 }}>
+            Keep Going
+          </Button>
+          <Button variant="danger" onClick={handleCancelWorkout} style={{ flex: 1 }}>
+            Discard Workout
+          </Button>
+        </div>
       </Modal>
-    </ScreenLayout>
+    </div>
   );
 };
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 16,
-  },
-  emptyText: {
-    marginVertical: 40,
-  },
-  anatomySection: {
-    marginBottom: 12,
-  },
-  actionContainer: {
-    marginVertical: 24,
-    marginBottom: 40,
-    gap: 12,
-  },
-  discardBtn: {
-    borderWidth: 1,
-    borderColor: '#EF4444',
-  },
-  finishBtn: {
-    backgroundColor: '#10B981', // Emerald green finish button
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.85)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalCard: {
-    backgroundColor: '#1E293B',
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  modalButtonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  flexBtn: {
-    flex: 1,
-  },
-});

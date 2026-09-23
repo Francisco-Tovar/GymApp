@@ -1,8 +1,13 @@
 import { create } from 'zustand';
-import { persist, createJSONStorage } from 'zustand/middleware';
+import { persist } from 'zustand/middleware';
 import { Exercise, WeightUnit } from '../types';
-import { LocalSetState } from '../components/organisms/ActiveSetLogger';
 import { convertWeight } from '../utils/unitConversion';
+
+export interface LocalSetState {
+  id: string;
+  weight: string;
+  reps: string;
+}
 
 export interface ExerciseSetsMap {
   [exerciseId: number]: LocalSetState[];
@@ -16,6 +21,7 @@ interface ActiveWorkoutState {
   exerciseSetsMap: ExerciseSetsMap;
   currentDate: string;
   unit: WeightUnit;
+  startTime: number | null;
 
   startWorkout: (
     workoutId: number,
@@ -39,19 +45,6 @@ interface ActiveWorkoutState {
   clearActiveWorkout: () => void;
 }
 
-const dummyStorage = {
-  getItem: () => null,
-  setItem: () => {},
-  removeItem: () => {},
-};
-
-const getStorage = () => {
-  if (typeof window !== 'undefined' && window.localStorage) {
-    return window.localStorage;
-  }
-  return dummyStorage;
-};
-
 export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
   persist(
     (set, get) => ({
@@ -62,6 +55,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
       exerciseSetsMap: {},
       currentDate: new Date().toISOString(),
       unit: 'lb',
+      startTime: null,
 
       startWorkout: (workoutId, workoutName, exercises, initialSetsMap, unit) => {
         set({
@@ -72,6 +66,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           exerciseSetsMap: initialSetsMap,
           currentDate: new Date().toISOString(),
           unit,
+          startTime: Date.now(),
         });
       },
 
@@ -171,12 +166,12 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           exercises: [],
           exerciseSetsMap: {},
           currentDate: new Date().toISOString(),
+          startTime: null,
         });
       },
     }),
     {
       name: 'gymapp-active-workout',
-      storage: createJSONStorage(getStorage),
     }
   )
 );

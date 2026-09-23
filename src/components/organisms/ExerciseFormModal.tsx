@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { Exercise } from '../../types';
 import { Typography } from '../atoms/Typography';
 import { Input } from '../atoms/Input';
 import { Button } from '../atoms/Button';
 import { Badge } from '../atoms/Badge';
-import { Exercise } from '../../types';
+import { Modal } from '../atoms/Modal';
+import { X, Plus } from 'lucide-react';
 
 interface ExerciseFormModalProps {
-  visible: boolean;
+  isOpen: boolean;
   exerciseToEdit?: Exercise | null;
   onClose: () => void;
   onSubmit: (name: string, muscleGroups: string) => Promise<void>;
@@ -15,19 +16,22 @@ interface ExerciseFormModalProps {
 
 const COMMON_MUSCLES = [
   'Chest',
-  'Back',
+  'Upper Back',
+  'Lats',
   'Shoulders',
   'Biceps',
   'Triceps',
+  'Forearms',
   'Quadriceps',
   'Hamstrings',
   'Glutes',
   'Calves',
   'Abs',
+  'Lower Back',
 ];
 
 export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
-  visible,
+  isOpen,
   exerciseToEdit,
   onClose,
   onSubmit,
@@ -49,8 +53,11 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
       setName('');
       setSelectedMuscles([]);
     }
+    setCustomMuscle('');
     setError('');
-  }, [exerciseToEdit, visible]);
+  }, [exerciseToEdit, isOpen]);
+
+  if (!isOpen) return null;
 
   const toggleMuscle = (muscle: string) => {
     if (selectedMuscles.includes(muscle)) {
@@ -61,19 +68,21 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
   };
 
   const addCustomMuscle = () => {
-    if (customMuscle.trim() && !selectedMuscles.includes(customMuscle.trim())) {
-      setSelectedMuscles([...selectedMuscles, customMuscle.trim()]);
+    const trimmed = customMuscle.trim();
+    if (trimmed && !selectedMuscles.includes(trimmed)) {
+      setSelectedMuscles([...selectedMuscles, trimmed]);
       setCustomMuscle('');
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!name.trim()) {
       setError('Exercise name is required.');
       return;
     }
     if (selectedMuscles.length === 0) {
-      setError('Select or type at least one muscle group.');
+      setError('Select at least one targeted muscle group.');
       return;
     }
 
@@ -81,8 +90,6 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
       setLoading(true);
       setError('');
       await onSubmit(name.trim(), selectedMuscles.join(', '));
-      setName('');
-      setSelectedMuscles([]);
       onClose();
     } catch (err: any) {
       setError(err?.message || 'Failed to save exercise.');
@@ -92,140 +99,99 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
   };
 
   return (
-    <Modal visible={visible} animationType="slide" transparent>
-      <View style={styles.overlay}>
-        <View style={styles.modalContent}>
-          <View style={styles.modalHeader}>
-            <Typography variant="h2" color="#F8FAFC">
-              {exerciseToEdit ? 'Edit Exercise' : 'Add New Exercise'}
-            </Typography>
-            <TouchableOpacity onPress={onClose}>
-              <Typography variant="h3" color="#94A3B8">
-                ✕
-              </Typography>
-            </TouchableOpacity>
-          </View>
+    <Modal isOpen={isOpen} onClose={onClose} position="center" maxWidth="500px">
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <Typography variant="h2">
+            {exerciseToEdit ? 'Edit Exercise' : 'Add New Exercise'}
+          </Typography>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-muted)',
+              cursor: 'pointer',
+              padding: '4px',
+            }}
+          >
+            <X size={20} />
+          </button>
+        </div>
 
-          <ScrollView style={styles.body} keyboardShouldPersistTaps="handled">
-            <Input
-              label="Exercise Name"
-              placeholder="e.g. Barbell Squat"
-              value={name}
-              onChangeText={setName}
-              error={error && !name.trim() ? error : undefined}
-            />
+        <form onSubmit={handleSave}>
+          <Input
+            label="Exercise Name"
+            placeholder="e.g. Bulgarian Split Squat"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            error={error}
+          />
 
-            <Typography variant="label" color="#94A3B8" style={styles.sectionLabel}>
-              Select Muscle Groups
+          <div style={{ margin: '18px 0 10px' }}>
+            <Typography variant="label" color="var(--text-secondary)" weight="bold" style={{ marginBottom: '8px' }}>
+              Targeted Muscle Groups ({selectedMuscles.length})
             </Typography>
-            <View style={styles.chipRow}>
+
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
               {COMMON_MUSCLES.map((muscle) => {
                 const isSelected = selectedMuscles.includes(muscle);
                 return (
-                  <TouchableOpacity key={muscle} onPress={() => toggleMuscle(muscle)}>
-                    <Badge
-                      label={muscle}
-                      variant={isSelected ? 'accent' : 'neutral'}
-                      style={isSelected ? styles.chipSelected : undefined}
-                    />
-                  </TouchableOpacity>
+                  <button
+                    key={muscle}
+                    type="button"
+                    onClick={() => toggleMuscle(muscle)}
+                    style={{
+                      border: `1px solid ${isSelected ? 'var(--primary)' : 'var(--border-color)'}`,
+                      backgroundColor: isSelected ? 'rgba(99, 102, 241, 0.2)' : 'var(--bg-main)',
+                      color: isSelected ? '#ffffff' : 'var(--text-secondary)',
+                      borderRadius: 'var(--radius-full)',
+                      padding: '5px 12px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {muscle} {isSelected && '✓'}
+                  </button>
                 );
               })}
-            </View>
+            </div>
 
-            <Input
-              label="Or Add Custom Muscle Group"
-              placeholder="e.g. Forearms"
-              value={customMuscle}
-              onChangeText={setCustomMuscle}
-              onSubmitEditing={addCustomMuscle}
-            />
-            {customMuscle ? (
-              <Button
-                title="+ Add Tag"
-                variant="outline"
-                size="small"
-                onPress={addCustomMuscle}
-                style={styles.addTagBtn}
+            {/* Custom Muscle Input */}
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <input
+                type="text"
+                placeholder="Custom muscle (e.g. Brachialis)..."
+                value={customMuscle}
+                onChange={(e) => setCustomMuscle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addCustomMuscle();
+                  }
+                }}
+                className="input-field"
+                style={{ flex: 1, padding: '8px 12px', fontSize: '13px' }}
               />
-            ) : null}
+              <Button type="button" variant="secondary" size="sm" onClick={addCustomMuscle} leftIcon={<Plus size={14} />}>
+                Add
+              </Button>
+            </div>
+          </div>
 
-            {error ? (
-              <Typography variant="caption" color="#EF4444" style={styles.errorText}>
-                {error}
-              </Typography>
-            ) : null}
-          </ScrollView>
-
-          <View style={styles.modalFooter}>
-            <Button
-              title="Cancel"
-              variant="secondary"
-              onPress={onClose}
-              style={styles.flexBtn}
-            />
-            <Button
-              title="Save Exercise"
-              variant="primary"
-              loading={loading}
-              onPress={handleSave}
-              style={[styles.flexBtn, { marginLeft: 10 }]}
-            />
-          </View>
-        </View>
-      </View>
+          <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+            <Button type="button" variant="secondary" onClick={onClose} style={{ flex: 1 }}>
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" disabled={loading} style={{ flex: 1.5 }}>
+              {loading ? 'Saving...' : exerciseToEdit ? 'Save Changes' : 'Create Exercise'}
+            </Button>
+          </div>
+        </form>
+      </div>
     </Modal>
   );
 };
-
-const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15, 23, 42, 0.8)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#1E293B',
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '85%',
-    padding: 20,
-    borderTopWidth: 1,
-    borderColor: '#334155',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  body: {
-    marginBottom: 16,
-  },
-  sectionLabel: {
-    marginTop: 12,
-    marginBottom: 8,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 12,
-  },
-  chipSelected: {
-    backgroundColor: '#6366F1',
-  },
-  addTagBtn: {
-    alignSelf: 'flex-start',
-    marginBottom: 12,
-  },
-  errorText: {
-    marginTop: 8,
-  },
-  modalFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  flexBtn: {
-    flex: 1,
-  },
-});
