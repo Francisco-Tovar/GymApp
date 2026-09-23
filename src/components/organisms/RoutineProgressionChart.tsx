@@ -20,7 +20,7 @@ import {
   Eye,
   EyeOff,
   Flame,
-  X,
+  ArrowLeft,
 } from 'lucide-react';
 
 export interface RoutineProgressionChartProps {
@@ -284,7 +284,40 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
         >
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <TrendingUp size={20} color="var(--primary)" />
+              {onClose ? (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  title="Go back"
+                  aria-label="Go back"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    border: '1px solid var(--border-color)',
+                    backgroundColor: 'var(--bg-app)',
+                    color: 'var(--text-main)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    flexShrink: 0,
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                    e.currentTarget.style.borderColor = 'var(--text-muted)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'var(--bg-app)';
+                    e.currentTarget.style.borderColor = 'var(--border-color)';
+                  }}
+                >
+                  <ArrowLeft size={18} />
+                </button>
+              ) : (
+                <TrendingUp size={20} color="var(--primary)" />
+              )}
               <Typography variant="h2" style={{ fontSize: '18px', fontWeight: 800 }}>
                 {title}
               </Typography>
@@ -323,31 +356,6 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
                   </option>
                 ))}
               </select>
-            )}
-
-            {onClose && (
-              <button
-                type="button"
-                onClick={onClose}
-                title="Close Progression"
-                aria-label="Close Progression"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  border: '1px solid var(--border-color)',
-                  backgroundColor: 'var(--bg-app)',
-                  color: 'var(--text-muted)',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s ease',
-                  flexShrink: 0,
-                }}
-              >
-                <X size={16} />
-              </button>
             )}
           </div>
         </div>

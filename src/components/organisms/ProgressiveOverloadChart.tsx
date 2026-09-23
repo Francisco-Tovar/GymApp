@@ -17,7 +17,7 @@ import { Typography } from '../atoms/Typography';
 import { Card } from '../atoms/Card';
 import { Badge } from '../atoms/Badge';
 import { Button } from '../atoms/Button';
-import { TrendingUp, Award, Activity, Calendar, Dumbbell, Sparkles, X } from 'lucide-react';
+import { TrendingUp, Award, Activity, Calendar, Dumbbell, Sparkles, ArrowLeft } from 'lucide-react';
 
 export interface ProgressiveOverloadChartProps {
   /**
@@ -254,20 +254,52 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <div
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(99, 102, 241, 0.15)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'var(--primary)',
-            }}
-          >
-            <TrendingUp size={18} />
-          </div>
+          {onClose ? (
+            <button
+              type="button"
+              onClick={onClose}
+              title="Go back"
+              aria-label="Go back"
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-main)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-primary)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                e.currentTarget.style.borderColor = 'var(--text-muted)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'var(--bg-main)';
+                e.currentTarget.style.borderColor = 'var(--border-color)';
+              }}
+            >
+              <ArrowLeft size={18} />
+            </button>
+          ) : (
+            <div
+              style={{
+                width: '32px',
+                height: '32px',
+                borderRadius: '8px',
+                backgroundColor: 'rgba(99, 102, 241, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--primary)',
+              }}
+            >
+              <TrendingUp size={18} />
+            </div>
+          )}
           <div>
             <Typography variant="h3" style={{ fontSize: '17px', lineHeight: 1.2 }}>
               {title}
@@ -278,63 +310,36 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
           </div>
         </div>
 
-        {/* Exercise Dropdown Selector & Close Button */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '180px', flex: '1 1 auto', maxWidth: '300px', justifyContent: 'flex-end' }}>
-          <div style={{ position: 'relative', width: '100%' }}>
-            <select
-              value={selectedExercise}
-              onChange={(e) => setSelectedExercise(e.target.value)}
-              disabled={availableExercises.length === 0}
-              style={{
-                width: '100%',
-                backgroundColor: 'var(--bg-main)',
-                color: 'var(--text-primary)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-sm)',
-                padding: '8px 12px',
-                fontSize: '13px',
-                fontWeight: 600,
-                cursor: availableExercises.length === 0 ? 'not-allowed' : 'pointer',
-                outline: 'none',
-                appearance: 'auto',
-              }}
-            >
-              {availableExercises.length === 0 ? (
-                <option value="">No exercises recorded</option>
-              ) : (
-                availableExercises.map((ex) => (
-                  <option key={ex.id} value={ex.id}>
-                    {ex.name} ({ex.sessionCount} session{ex.sessionCount !== 1 ? 's' : ''})
-                  </option>
-                ))
-              )}
-            </select>
-          </div>
-
-          {onClose && (
-            <button
-              type="button"
-              onClick={onClose}
-              title="Close Tracker"
-              aria-label="Close Tracker"
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                border: '1px solid var(--border-color)',
-                backgroundColor: 'var(--bg-main)',
-                color: 'var(--text-muted)',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-                flexShrink: 0,
-              }}
-            >
-              <X size={16} />
-            </button>
-          )}
+        {/* Exercise Dropdown Selector */}
+        <div style={{ position: 'relative', minWidth: '180px', flex: '1 1 auto', maxWidth: '260px' }}>
+          <select
+            value={selectedExercise}
+            onChange={(e) => setSelectedExercise(e.target.value)}
+            disabled={availableExercises.length === 0}
+            style={{
+              width: '100%',
+              backgroundColor: 'var(--bg-main)',
+              color: 'var(--text-primary)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '8px 12px',
+              fontSize: '13px',
+              fontWeight: 600,
+              cursor: availableExercises.length === 0 ? 'not-allowed' : 'pointer',
+              outline: 'none',
+              appearance: 'auto',
+            }}
+          >
+            {availableExercises.length === 0 ? (
+              <option value="">No exercises recorded</option>
+            ) : (
+              availableExercises.map((ex) => (
+                <option key={ex.id} value={ex.id}>
+                  {ex.name} ({ex.sessionCount} session{ex.sessionCount !== 1 ? 's' : ''})
+                </option>
+              ))
+            )}
+          </select>
         </div>
       </div>
 
