@@ -82,63 +82,174 @@ export const INITIAL_TODAY_SESSION = {
   ],
 };
 
+let initPromise: Promise<void> | null = null;
+
 export const initDatabase = async (): Promise<void> => {
-  const exerciseCount = await db.exercises.count();
-  if (exerciseCount === 0) {
-    const exerciseIdMap: Record<string, number> = {};
+  if (initPromise) return initPromise;
 
-    for (const ex of INITIAL_EXERCISES) {
-      const id = await db.exercises.add({ name: ex.name, muscle_groups: ex.muscle_groups });
-      exerciseIdMap[ex.name] = Number(id);
-    }
-
-    for (const w of INITIAL_WORKOUTS) {
-      const workoutId = await db.workouts.add({ name: w.name });
-      for (const exName of w.exerciseNames) {
-        const exId = exerciseIdMap[exName];
-        if (exId) {
-          await db.workout_exercises.add({
-            workout_id: Number(workoutId),
-            exercise_id: exId,
-          });
+  initPromise = (async () => {
+    await db.transaction('rw', db.exercises, db.workouts, db.workout_exercises, db.sessions, db.session_sets, async () => {
+      // 1. Deduplicate existing exercises by name
+      const allExercises = await db.exercises.toArray();
+      const seenExercises = new Map<string, number>();
+      for (const ex of allExercises) {
+        if (!ex.id) continue;
+        const key = ex.name.trim().toLowerCase();
+        if (seenExercises.has(key)) {
+          const canonicalId = seenExercises.get(key)!;
+          // Re-map any workout_exercises and session_sets referencing the duplicate ID to canonicalId
+          const weDups = await db.workout_exercises.where('exercise_id').equals(ex.id).toArray();
+          for (const row of weDups) {
+            await db.workout_exercises.where('id').equals(row.id!).delete();
+          }
+          const ssDups = await db.session_sets.where('exercise_id').equals(ex.id).toArray();
+          for (const row of ssDups) {
+            await db.session_sets.update(row.id!, { exercise_id: canonicalId });
+          }
+          await db.exercises.delete(ex.id);
+        } else {
+          seenExercises.set(key, ex.id);
         }
       }
-    }
 
-    // Seed sample session if history is empty
-    const sessionCount = await db.sessions.count();
-    if (sessionCount === 0) {
-      const workout = await db.workouts.where('name').equals(INITIAL_TODAY_SESSION.workoutName).first();
-      if (workout && workout.id) {
-        const sessionId = await db.sessions.add({
-          workout_id: workout.id,
-          date: INITIAL_TODAY_SESSION.date,
-        });
+      // 2. Deduplicate existing workouts by name
+      const allWorkouts = await db.workouts.toArray();
+      const seenWorkouts = new Map<string, number>();
+      for (const w of allWorkouts) {
+        if (!w.id) continue;
+        const key = w.name.trim().toLowerCase();
+        if (seenWorkouts.has(key)) {
+          const canonicalId = seenWorkouts.get(key)!;
+          // Delete workout_exercises for the duplicate
+          await db.workout_exercises.where('workout_id').equals(w.id).delete();
+          // Re-map sessions to canonicalId
+          const sessDups = await db.sessions.where('workout_id').equals(w.id).toArray();
+          for (const s of sessDups) {
+            await db.sessions.update(s.id!, { workout_id: canonicalId });
+          }
+          await db.workouts.delete(w.id);
+        } else {
+          seenWorkouts.set(key, w.id);
+        }
+      }
 
-        for (const setItem of INITIAL_TODAY_SESSION.sets) {
-          const exId = exerciseIdMap[setItem.exerciseName];
-          if (exId) {
-            await db.session_sets.add({
-              session_id: Number(sessionId),
-              exercise_id: exId,
-              set_number: setItem.set_number,
-              weight: setItem.weight,
-              reps: setItem.reps,
-              unit: setItem.unit,
+      // 3. Deduplicate workout_exercises (same workout_id & exercise_id)
+      const allWE = await db.workout_exercises.toArray();
+      const seenWE = new Set<string>();
+      for (const we of allWE) {
+        if (!we.id) continue;
+        const key = `${we.workout_id}-${we.exercise_id}`;
+        if (seenWE.has(key)) {
+          await db.workout_exercises.delete(we.id);
+        } else {
+          seenWE.add(key);
+        }
+      }
+
+      // 4. Deduplicate sessions (same workout_id & date)
+      const allSessions = await db.sessions.toArray();
+      const seenSessions = new Set<string>();
+      for (const s of allSessions) {
+        if (!s.id) continue;
+        const key = `${s.workout_id}-${s.date}`;
+        if (seenSessions.has(key)) {
+          await db.session_sets.where('session_id').equals(s.id).delete();
+          await db.sessions.delete(s.id);
+        } else {
+          seenSessions.add(key);
+        }
+      }
+
+      // 5. Seed initial data ONLY IF database is empty
+      const exerciseCount = await db.exercises.count();
+      if (exerciseCount === 0) {
+        const exerciseIdMap: Record<string, number> = {};
+
+        for (const ex of INITIAL_EXERCISES) {
+          const existing = await db.exercises.where('name').equalsIgnoreCase(ex.name).first();
+          if (existing && existing.id) {
+            exerciseIdMap[ex.name] = existing.id;
+          } else {
+            const id = await db.exercises.add({ name: ex.name, muscle_groups: ex.muscle_groups });
+            exerciseIdMap[ex.name] = Number(id);
+          }
+        }
+
+        for (const w of INITIAL_WORKOUTS) {
+          const existingW = await db.workouts.where('name').equalsIgnoreCase(w.name).first();
+          let workoutId = existingW?.id;
+          if (!workoutId) {
+            const id = await db.workouts.add({ name: w.name });
+            workoutId = Number(id);
+          }
+          for (const exName of w.exerciseNames) {
+            const exId = exerciseIdMap[exName];
+            if (exId && workoutId) {
+              const existingWE = await db.workout_exercises
+                .where('workout_id')
+                .equals(workoutId)
+                .and((item) => item.exercise_id === exId)
+                .first();
+              if (!existingWE) {
+                await db.workout_exercises.add({
+                  workout_id: workoutId,
+                  exercise_id: exId,
+                });
+              }
+            }
+          }
+        }
+
+        // Seed sample session if history is empty
+        const sessionCount = await db.sessions.count();
+        if (sessionCount === 0) {
+          const workout = await db.workouts.where('name').equalsIgnoreCase(INITIAL_TODAY_SESSION.workoutName).first();
+          if (workout && workout.id) {
+            const sessionId = await db.sessions.add({
+              workout_id: workout.id,
+              date: INITIAL_TODAY_SESSION.date,
             });
+
+            for (const setItem of INITIAL_TODAY_SESSION.sets) {
+              const exId = exerciseIdMap[setItem.exerciseName];
+              if (exId) {
+                await db.session_sets.add({
+                  session_id: Number(sessionId),
+                  exercise_id: exId,
+                  set_number: setItem.set_number,
+                  weight: setItem.weight,
+                  reps: setItem.reps,
+                  unit: setItem.unit,
+                });
+              }
+            }
           }
         }
       }
-    }
-  }
+    });
+  })();
+
+  return initPromise;
 };
 
 // CRUD API
 export const fetchExercises = async (): Promise<Exercise[]> => {
-  return await db.exercises.orderBy('name').toArray();
+  const all = await db.exercises.orderBy('name').toArray();
+  const seen = new Set<string>();
+  const unique: Exercise[] = [];
+  for (const ex of all) {
+    const key = ex.name.trim().toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      unique.push(ex);
+    }
+  }
+  return unique;
 };
 
 export const insertExercise = async (name: string, muscleGroups: string): Promise<number> => {
+  const existing = await db.exercises.where('name').equalsIgnoreCase(name.trim()).first();
+  if (existing && existing.id) return existing.id;
   const id = await db.exercises.add({ name: name.trim(), muscle_groups: muscleGroups.trim() });
   return Number(id);
 };
@@ -158,9 +269,14 @@ export const deleteExercise = async (id: number): Promise<void> => {
 export const fetchWorkouts = async (): Promise<Workout[]> => {
   const workouts = await db.workouts.toArray();
   const result: Workout[] = [];
+  const seen = new Set<string>();
 
   for (const w of workouts) {
     if (!w.id) continue;
+    const key = w.name.trim().toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+
     const weRows = await db.workout_exercises.where('workout_id').equals(w.id).toArray();
     const exercises: Exercise[] = [];
     for (const row of weRows) {
