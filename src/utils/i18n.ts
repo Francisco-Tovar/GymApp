@@ -120,6 +120,7 @@ export const TRANSLATIONS = {
     top_gainer: 'Top Gainer',
     visible: 'visible',
     sessions: 'sessions',
+    session: 'Session',
     select_all: 'Select All',
     deselect_all: 'Deselect All',
     select_exercise_placeholder: 'Select an exercise...',
@@ -133,6 +134,10 @@ export const TRANSLATIONS = {
     all_lines_hidden: 'All Exercise Lines Hidden',
     all_lines_hidden_desc: 'Select an exercise tag from the legend below or click "Select All" to view progress.',
     show_all_lines: 'Show All Lines',
+    session_details: 'Session Details',
+    click_graph_hint: 'Click or tap on the graph to view session details in fullscreen',
+    previous_session: 'Previous Session',
+    next_session: 'Next Session',
 
     // Settings Modal
     settings_title: 'Application Settings',
@@ -274,6 +279,7 @@ export const TRANSLATIONS = {
     top_gainer: 'Mayor Progreso',
     visible: 'visibles',
     sessions: 'sesiones',
+    session: 'Sesión',
     select_all: 'Seleccionar Todo',
     deselect_all: 'Deseleccionar Todo',
     select_exercise_placeholder: 'Selecciona un ejercicio...',
@@ -287,6 +293,10 @@ export const TRANSLATIONS = {
     all_lines_hidden: 'Todas las líneas ocultas',
     all_lines_hidden_desc: 'Selecciona un ejercicio de la leyenda o haz clic en "Seleccionar Todo" para ver el progreso.',
     show_all_lines: 'Mostrar Todas las Líneas',
+    session_details: 'Detalles de la Sesión',
+    click_graph_hint: 'Toca la gráfica para ver los detalles de la sesión en pantalla completa',
+    previous_session: 'Sesión Anterior',
+    next_session: 'Siguiente Sesión',
 
     // Settings Modal
     settings_title: 'Configuración',

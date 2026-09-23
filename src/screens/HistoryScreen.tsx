@@ -7,8 +7,6 @@ import {
   fetchAllWorkoutSessionRecords,
   fetchRoutineSessionRecords,
   fetchWorkouts,
-  seedDummyWorkouts,
-  restoreOriginalWorkouts,
 } from '../db/db';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { convertWeight } from '../utils/unitConversion';
@@ -41,8 +39,6 @@ export const HistoryScreen: React.FC = () => {
   const loadHistory = async () => {
     try {
       setLoading(true);
-      await restoreOriginalWorkouts();
-      await seedDummyWorkouts();
       const [data, records, rRecords, wList] = await Promise.all([
         fetchSessionsHistory(),
         fetchAllWorkoutSessionRecords(unit),

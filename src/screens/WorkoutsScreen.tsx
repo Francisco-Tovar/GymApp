@@ -6,7 +6,6 @@ import {
   deleteWorkout,
   insertWorkout,
   updateWorkout,
-  restoreOriginalWorkouts,
   fetchRoutineSessionRecords,
 } from '../db/db';
 import { cleanupFullBodyRoutine } from '../db/seedDummyData';
@@ -82,7 +81,6 @@ export const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({
   const loadData = async () => {
     try {
       setLoading(true);
-      await restoreOriginalWorkouts();
       const [wList, eList] = await Promise.all([fetchWorkouts(), fetchExercises()]);
       const savedOrder = getSavedOrder();
 

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   WorkoutSessionRecord,
   ProgressionMode,
@@ -20,7 +21,7 @@ import { Button } from '../atoms/Button';
 import { Combobox } from '../atoms/Combobox';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { t } from '../../utils/i18n';
-import { TrendingUp, Award, Activity, Calendar, Dumbbell, Sparkles, ArrowLeft } from 'lucide-react';
+import { TrendingUp, Award, Activity, Calendar, Dumbbell, Sparkles, ArrowLeft, X, ChevronLeft, ChevronRight } from 'lucide-react';
 
 export interface ProgressiveOverloadChartProps {
   /**
@@ -68,6 +69,7 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
   const [timeRange, setTimeRange] = useState<TimeRangeInterval>(defaultTimeRange);
   const [selectedExercise, setSelectedExercise] = useState<string>('');
   const [hoveredPoint, setHoveredPoint] = useState<ProcessedDataPoint | null>(null);
+  const [modalPoint, setModalPoint] = useState<ProcessedDataPoint | null>(null);
 
   const displayTitle = title || (language === 'es' ? 'Seguimiento de Sobrecarga Progresiva' : 'Progressive Overload Tracker');
 
@@ -616,6 +618,24 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
               height: 'auto',
               display: 'block',
               overflow: 'visible',
+              cursor: 'pointer',
+            }}
+            onClick={(e) => {
+              if (dataPoints.length === 0) return;
+              const rect = e.currentTarget.getBoundingClientRect();
+              const relativeX = (e.clientX - rect.left) * (chartWidth / rect.width);
+              let closestPt = dataPoints[0];
+              let closestDist = Infinity;
+              pointsWithCoords.forEach((p) => {
+                const dist = Math.abs(p.x - relativeX);
+                if (dist < closestDist) {
+                  closestDist = dist;
+                  const found = dataPoints.find((dp) => dp.id === p.id);
+                  if (found) closestPt = found;
+                }
+              });
+              setHoveredPoint(closestPt);
+              setModalPoint(closestPt);
             }}
           >
             <defs>
@@ -773,12 +793,35 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
                     fill="transparent"
                     style={{ cursor: 'pointer' }}
                     onMouseEnter={() => setHoveredPoint(point)}
-                    onClick={() => setHoveredPoint(point)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setHoveredPoint(point);
+                      setModalPoint(point);
+                    }}
                   />
                 </g>
               );
             })}
           </svg>
+        </div>
+      )}
+
+      {/* Subtle Hint indicating the graph is interactive */}
+      {dataPoints.length > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '2px 0',
+            fontSize: '11px',
+            color: 'var(--text-muted)',
+            userSelect: 'none',
+          }}
+        >
+          <Sparkles size={12} color="var(--primary)" />
+          <span>{t('click_graph_hint', language)}</span>
         </div>
       )}
 
@@ -843,6 +886,194 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
           </div>
         </div>
       )}
+      {/* Fullscreen Point Detail Modal */}
+      {modalPoint && typeof document !== 'undefined' && (() => {
+        const pointIndex = dataPoints.findIndex((p) => p.id === modalPoint.id);
+
+        return createPortal(
+          <div
+            className="modal-portal-backdrop animate-fade-in"
+            onClick={() => setModalPoint(null)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              width: '100vw',
+              height: '100dvh',
+              backgroundColor: 'rgba(0, 0, 0, 0.82)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              zIndex: 10002,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+            }}
+          >
+            <div
+              className="modal-portal-content"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: 'var(--bg-surface)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-lg)',
+                width: '100%',
+                maxWidth: '560px',
+                maxHeight: '92dvh',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 25px 60px rgba(0, 0, 0, 0.85)',
+                overflow: 'hidden',
+              }}
+            >
+              {/* Header */}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '16px 20px',
+                  borderBottom: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-elevated)',
+                  gap: '12px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Calendar size={20} color="var(--primary)" />
+                  <div>
+                    <Typography variant="h3" style={{ fontSize: '16px', fontWeight: 800 }}>
+                      {activeExerciseName}
+                    </Typography>
+                    <Typography variant="caption" color="var(--text-muted)">
+                      {modalPoint.date.toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </Typography>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button
+                    type="button"
+                    disabled={pointIndex <= 0}
+                    onClick={() => {
+                      if (pointIndex > 0) {
+                        const prevPt = dataPoints[pointIndex - 1];
+                        setModalPoint(prevPt);
+                        setHoveredPoint(prevPt);
+                      }
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-color)',
+                      backgroundColor: pointIndex <= 0 ? 'transparent' : 'var(--bg-surface)',
+                      color: pointIndex <= 0 ? 'var(--text-subtle)' : 'var(--text-primary)',
+                      cursor: pointIndex <= 0 ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, padding: '0 4px' }}>
+                    {pointIndex + 1} / {dataPoints.length}
+                  </span>
+
+                  <button
+                    type="button"
+                    disabled={pointIndex >= dataPoints.length - 1}
+                    onClick={() => {
+                      if (pointIndex < dataPoints.length - 1) {
+                        const nextPt = dataPoints[pointIndex + 1];
+                        setModalPoint(nextPt);
+                        setHoveredPoint(nextPt);
+                      }
+                    }}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-color)',
+                      backgroundColor: pointIndex >= dataPoints.length - 1 ? 'transparent' : 'var(--bg-surface)',
+                      color: pointIndex >= dataPoints.length - 1 ? 'var(--text-subtle)' : 'var(--text-primary)',
+                      cursor: pointIndex >= dataPoints.length - 1 ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModalPoint(null)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-color)',
+                      backgroundColor: 'transparent',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      marginLeft: '4px',
+                    }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div style={{ padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px', flex: 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                    {getModeYAxisLabel(activeMode, unit)}:
+                  </span>
+                  <Badge variant="primary" style={{ fontSize: '14px', padding: '4px 10px', fontWeight: 800 }}>
+                    {modalPoint.displayValue}
+                  </Badge>
+                </div>
+
+                {modalPoint.subValue && (
+                  <Typography variant="caption" color="var(--text-muted)">
+                    {modalPoint.subValue}
+                  </Typography>
+                )}
+
+                <div style={{ backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
+                  <Typography variant="label" color="var(--primary)" style={{ fontWeight: 700, marginBottom: '8px', display: 'block' }}>
+                    {language === 'es' ? 'Desglose de Series' : 'Sets Breakdown'}
+                  </Typography>
+                  <Typography variant="body" style={{ fontSize: '13px', lineHeight: 1.6 }}>
+                    {modalPoint.allSetsSummary}
+                  </Typography>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-elevated)', display: 'flex', justifyContent: 'flex-end' }}>
+                <Button variant="secondary" onClick={() => setModalPoint(null)} style={{ minWidth: '90px' }}>
+                  {t('close', language)}
+                </Button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
     </Card>
   );
 };

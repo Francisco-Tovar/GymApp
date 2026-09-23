@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useRef, useCallback } from 'react';
+import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   RoutineSessionRecord,
   RoutineMetricMode,
@@ -9,6 +10,7 @@ import {
 import { Typography } from '../atoms/Typography';
 import { Card } from '../atoms/Card';
 import { Badge } from '../atoms/Badge';
+import { Button } from '../atoms/Button';
 import { Combobox } from '../atoms/Combobox';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { t } from '../../utils/i18n';
@@ -24,6 +26,11 @@ import {
   EyeOff,
   Flame,
   ArrowLeft,
+  X,
+  ChevronLeft,
+  ChevronRight,
+  Sparkles,
+  Dumbbell,
 } from 'lucide-react';
 
 export interface RoutineProgressionChartProps {
@@ -53,9 +60,11 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
   const [hasInitializedVisibility, setHasInitializedVisibility] = useState(false);
   const [hoveredSessionIndex, setHoveredSessionIndex] = useState<number | null>(null);
   const [hoverPosition, setHoverPosition] = useState<{ x: number; y: number } | null>(null);
+  const [modalSessionIndex, setModalSessionIndex] = useState<number | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchStartPos = useRef<{ x: number; y: number } | null>(null);
 
   // 1. Process progression data across sessions
   const chartData = useMemo(() => {
@@ -242,6 +251,61 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
     setHoveredSessionIndex(null);
     setHoverPosition(null);
   };
+
+  // Handle click on chart to open fullscreen modal
+  const handleChartClick = (clientX: number, target: SVGSVGElement) => {
+    if (sessionCount === 0) return;
+    const rect = target.getBoundingClientRect();
+    const relativeX = clientX - rect.left;
+    const clampedX = Math.max(padding.left, Math.min(rect.width - padding.right, relativeX));
+    const plotFraction = (clampedX - padding.left) / (rect.width - padding.left - padding.right);
+    const closestIndex = Math.min(
+      sessionCount - 1,
+      Math.max(0, Math.round(plotFraction * (sessionCount - 1)))
+    );
+    setModalSessionIndex(closestIndex);
+  };
+
+  const onChartTouchStart = (e: React.TouchEvent<SVGSVGElement>) => {
+    if (e.touches.length > 0) {
+      touchStartPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+    }
+  };
+
+  const onChartTouchEndWithTap = (e: React.TouchEvent<SVGSVGElement>) => {
+    onChartLeave();
+    if (e.changedTouches.length > 0 && touchStartPos.current) {
+      const dx = Math.abs(e.changedTouches[0].clientX - touchStartPos.current.x);
+      const dy = Math.abs(e.changedTouches[0].clientY - touchStartPos.current.y);
+      if (dx < 10 && dy < 10) {
+        handleChartClick(e.changedTouches[0].clientX, e.currentTarget);
+      }
+    }
+  };
+
+  // Keyboard navigation & body scroll lock for fullscreen modal
+  useEffect(() => {
+    if (modalSessionIndex === null) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setModalSessionIndex(null);
+      } else if (e.key === 'ArrowLeft') {
+        setModalSessionIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : prev));
+      } else if (e.key === 'ArrowRight') {
+        setModalSessionIndex((prev) => (prev !== null && prev < sessionCount - 1 ? prev + 1 : prev));
+      }
+    };
+
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = prevOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [modalSessionIndex, sessionCount]);
 
   // 8. KPI Top Gainer Computation
   const topGainer = useMemo(() => {
@@ -446,7 +510,7 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
       >
         {(
           [
-            { id: 'relativeGrowth', label: `${t('relative_growth', language)} (%)`, icon: Flame },
+            { id: 'relativeGrowth', label: t('relative_growth', language), icon: Flame },
             { id: 'e1rm', label: `${t('estimated_1rm', language)} (${unit})`, icon: TrendingUp },
             { id: 'topSet', label: `${t('top_set_load', language)} (${unit})`, icon: Award },
             { id: 'volume', label: `${t('total_volume', language)} (${unit})`, icon: Layers },
@@ -566,13 +630,15 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
               height: 'auto',
               display: 'block',
               userSelect: 'none',
-              cursor: 'crosshair',
+              cursor: 'pointer',
               touchAction: 'none',
             }}
+            onClick={(e) => handleChartClick(e.clientX, e.currentTarget)}
+            onTouchStart={onChartTouchStart}
+            onTouchEnd={onChartTouchEndWithTap}
             onMouseMove={onChartMouseMove}
             onTouchMove={onChartTouchMove}
             onMouseLeave={onChartLeave}
-            onTouchEnd={onChartLeave}
           >
             <defs>
               {/* Neon Glow Filter */}
@@ -697,6 +763,10 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
                           transition: 'all 0.2s ease',
                           cursor: 'pointer',
                         }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setModalSessionIndex(pt.sessionIndex);
+                        }}
                       />
                     );
                   })}
@@ -719,126 +789,25 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
               </g>
             )}
           </svg>
+        </div>
+      )}
 
-          {/* Shared Floating Tooltip */}
-          {activeHoveredSession && (
-            <div
-              style={{
-                position: 'absolute',
-                top: '12px',
-                right: '12px',
-                maxWidth: '320px',
-                width: 'calc(100% - 24px)',
-                backgroundColor: 'rgba(15, 23, 42, 0.94)',
-                backdropFilter: 'blur(8px)',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                borderRadius: 'var(--radius-md)',
-                padding: '12px',
-                boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)',
-                pointerEvents: 'none',
-                zIndex: 10,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-              }}
-            >
-              {/* Tooltip Header */}
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                  paddingBottom: '6px',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Calendar size={13} color="var(--primary)" />
-                  <Typography variant="caption" style={{ fontWeight: 800, color: '#ffffff' }}>
-                    {activeHoveredSession.dateFormatted}
-                  </Typography>
-                </div>
-                <Typography variant="caption" color="var(--text-muted)">
-                  Session #{hoveredSessionIndex! + 1}
-                </Typography>
-              </div>
-
-              {/* Tooltip List of Visible Exercises */}
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px',
-                  maxHeight: '180px',
-                  overflowY: 'auto',
-                }}
-              >
-                {chartData.series
-                  .filter((s) => activeVisibleIds.has(s.id))
-                  .map((series) => {
-                    const point = series.points[hoveredSessionIndex!];
-                    const hasData = point && point.hasData;
-
-                    return (
-                      <div
-                        key={`tt-${series.id}`}
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '2px',
-                          fontSize: '11px',
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span
-                              style={{
-                                width: '8px',
-                                height: '8px',
-                                borderRadius: '50%',
-                                backgroundColor: series.color,
-                                display: 'inline-block',
-                              }}
-                            />
-                            <span style={{ fontWeight: 600, color: '#f8fafc' }}>
-                              {series.name}
-                            </span>
-                          </div>
-
-                          <span
-                            style={{
-                              fontWeight: 700,
-                              color: hasData ? series.color : 'var(--text-subtle)',
-                            }}
-                          >
-                            {hasData ? point.displayValue : 'Skipped'}
-                          </span>
-                        </div>
-
-                        {hasData && (
-                          <div
-                            style={{
-                              paddingLeft: '14px',
-                              fontSize: '10px',
-                              color: 'var(--text-muted)',
-                              lineHeight: 1.3,
-                            }}
-                          >
-                            {point.breakdown}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-              </div>
-            </div>
-          )}
+      {/* Subtle Hint indicating the graph is interactive */}
+      {sessionCount > 0 && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            padding: '2px 0',
+            fontSize: '11px',
+            color: 'var(--text-muted)',
+            userSelect: 'none',
+          }}
+        >
+          <Sparkles size={12} color="var(--primary)" />
+          <span>{t('click_graph_hint', language)}</span>
         </div>
       )}
 
@@ -975,6 +944,361 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
           </div>
         </div>
       )}
+      {/* Fullscreen Session Detail Modal */}
+      {modalSessionIndex !== null && typeof document !== 'undefined' && (() => {
+        const modalSession = chartData.sessions[modalSessionIndex];
+        if (!modalSession) return null;
+
+        return createPortal(
+          <div
+            className="modal-portal-backdrop animate-fade-in"
+            onClick={() => setModalSessionIndex(null)}
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              width: '100vw',
+              height: '100dvh',
+              backgroundColor: 'rgba(0, 0, 0, 0.82)',
+              backdropFilter: 'blur(8px)',
+              WebkitBackdropFilter: 'blur(8px)',
+              zIndex: 10002,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '16px',
+            }}
+          >
+            <div
+              className="modal-portal-content"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                backgroundColor: 'var(--bg-surface)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-lg)',
+                width: '100%',
+                maxWidth: '720px',
+                maxHeight: '92dvh',
+                display: 'flex',
+                flexDirection: 'column',
+                boxShadow: '0 25px 60px rgba(0, 0, 0, 0.85)',
+                overflow: 'hidden',
+              }}
+            >
+              {/* Modal Header */}
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  padding: '16px 20px',
+                  borderBottom: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-elevated)',
+                  flexWrap: 'wrap',
+                  gap: '12px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <Calendar size={20} color="var(--primary)" />
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Typography variant="h3" style={{ fontSize: '17px', fontWeight: 800 }}>
+                        {t('session', language)} #{modalSessionIndex + 1}
+                      </Typography>
+                      <Badge variant="primary" style={{ fontSize: '11px', fontWeight: 700 }}>
+                        {modalSession.dateFormatted}
+                      </Badge>
+                    </div>
+                    <Typography variant="caption" color="var(--text-muted)">
+                      {modalSession.date.toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric',
+                      })}
+                    </Typography>
+                  </div>
+                </div>
+
+                {/* Session Stepper / Nav & Close */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <button
+                    type="button"
+                    disabled={modalSessionIndex <= 0}
+                    onClick={() => setModalSessionIndex((prev) => (prev !== null && prev > 0 ? prev - 1 : prev))}
+                    title={t('previous_session', language)}
+                    aria-label={t('previous_session', language)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-color)',
+                      backgroundColor: modalSessionIndex <= 0 ? 'transparent' : 'var(--bg-surface)',
+                      color: modalSessionIndex <= 0 ? 'var(--text-subtle)' : 'var(--text-primary)',
+                      cursor: modalSessionIndex <= 0 ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <ChevronLeft size={18} />
+                  </button>
+
+                  <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 700, padding: '0 4px' }}>
+                    {modalSessionIndex + 1} / {sessionCount}
+                  </span>
+
+                  <button
+                    type="button"
+                    disabled={modalSessionIndex >= sessionCount - 1}
+                    onClick={() => setModalSessionIndex((prev) => (prev !== null && prev < sessionCount - 1 ? prev + 1 : prev))}
+                    title={t('next_session', language)}
+                    aria-label={t('next_session', language)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-color)',
+                      backgroundColor: modalSessionIndex >= sessionCount - 1 ? 'transparent' : 'var(--bg-surface)',
+                      color: modalSessionIndex >= sessionCount - 1 ? 'var(--text-subtle)' : 'var(--text-primary)',
+                      cursor: modalSessionIndex >= sessionCount - 1 ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    <ChevronRight size={18} />
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setModalSessionIndex(null)}
+                    title={t('close', language)}
+                    aria-label={t('close', language)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '32px',
+                      height: '32px',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border-color)',
+                      backgroundColor: 'transparent',
+                      color: 'var(--text-secondary)',
+                      cursor: 'pointer',
+                      marginLeft: '6px',
+                    }}
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Metric Mode Strip */}
+              <div
+                style={{
+                  padding: '10px 20px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.02)',
+                  borderBottom: '1px solid var(--border-color)',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  flexWrap: 'wrap',
+                  gap: '8px',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 600 }}>
+                    {language === 'es' ? 'Métrica activa:' : 'Active metric:'}
+                  </span>
+                  <Badge variant="accent" style={{ fontSize: '11px', fontWeight: 700 }}>
+                    {metricMode === 'relativeGrowth'
+                      ? t('relative_growth', language)
+                      : metricMode === 'e1rm'
+                      ? `${t('estimated_1rm', language)} (${unit})`
+                      : metricMode === 'topSet'
+                      ? `${t('top_set_load', language)} (${unit})`
+                      : `${t('total_volume', language)} (${unit})`}
+                  </Badge>
+                </div>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  {chartData.series.filter((s) => s.points[modalSessionIndex]?.hasData).length} {t('exercises', language).toLowerCase()}
+                </span>
+              </div>
+
+              {/* Scrollable Exercises List */}
+              <div
+                style={{
+                  padding: '16px 20px',
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  flex: 1,
+                }}
+              >
+                {chartData.series.map((series) => {
+                  const point = series.points[modalSessionIndex];
+                  const hasData = point && point.hasData;
+                  const exData = modalSession.exercises.get(series.name.toLowerCase());
+
+                  return (
+                    <div
+                      key={`modal-ex-${series.id}`}
+                      style={{
+                        backgroundColor: 'var(--bg-elevated)',
+                        border: `1px solid ${hasData ? 'var(--border-color)' : 'rgba(255, 255, 255, 0.04)'}`,
+                        borderLeft: `4px solid ${series.color}`,
+                        borderRadius: 'var(--radius-md)',
+                        padding: '12px 14px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '8px',
+                        opacity: hasData ? 1 : 0.55,
+                      }}
+                    >
+                      {/* Exercise Header */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                          flexWrap: 'wrap',
+                          gap: '6px',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span
+                            style={{
+                              width: '10px',
+                              height: '10px',
+                              borderRadius: '50%',
+                              backgroundColor: series.color,
+                              boxShadow: `0 0 8px ${series.color}`,
+                              display: 'inline-block',
+                            }}
+                          />
+                          <span style={{ fontWeight: 700, fontSize: '14px', color: '#f8fafc' }}>
+                            {series.name}
+                          </span>
+                        </div>
+
+                        {hasData ? (
+                          <span
+                            style={{
+                              fontSize: '13px',
+                              fontWeight: 800,
+                              color: series.color,
+                              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                              padding: '3px 8px',
+                              borderRadius: 'var(--radius-sm)',
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                            }}
+                          >
+                            {point.displayValue}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '11px', color: 'var(--text-subtle)', fontStyle: 'italic' }}>
+                            {t('skipped_session', language)}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Detailed Sets Breakdown */}
+                      {hasData && exData && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '2px' }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexWrap: 'wrap',
+                              gap: '6px',
+                            }}
+                          >
+                            {exData.sets.map((setObj, sIdx) => (
+                              <div
+                                key={`set-${sIdx}`}
+                                style={{
+                                  backgroundColor: 'var(--bg-main)',
+                                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                                  borderRadius: 'var(--radius-sm)',
+                                  padding: '5px 9px',
+                                  fontSize: '12px',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '5px',
+                                }}
+                              >
+                                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>
+                                  #{setObj.setNumber}:
+                                </span>
+                                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                                  {setObj.weight} {unit}
+                                </span>
+                                <span style={{ color: 'var(--text-muted)' }}>×</span>
+                                <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                                  {setObj.reps} {language === 'es' ? 'reps' : 'reps'}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Extra KPIs: Top Set, E1RM, Total Volume */}
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '14px',
+                              fontSize: '11px',
+                              color: 'var(--text-muted)',
+                              paddingTop: '6px',
+                              borderTop: '1px solid rgba(255, 255, 255, 0.04)',
+                              flexWrap: 'wrap',
+                            }}
+                          >
+                            <span>
+                              <strong style={{ color: 'var(--text-secondary)' }}>Top Set:</strong> {exData.topSetWeight} {unit} × {exData.topSetReps}
+                            </span>
+                            <span>
+                              <strong style={{ color: 'var(--text-secondary)' }}>e1RM:</strong> {exData.e1rm} {unit}
+                            </span>
+                            <span>
+                              <strong style={{ color: 'var(--text-secondary)' }}>Volume:</strong> {exData.volume.toLocaleString()} {unit}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Modal Footer */}
+              <div
+                style={{
+                  padding: '12px 20px',
+                  borderTop: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-elevated)',
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                }}
+              >
+                <Button
+                  variant="secondary"
+                  onClick={() => setModalSessionIndex(null)}
+                  style={{ minWidth: '100px' }}
+                >
+                  {t('close', language)}
+                </Button>
+              </div>
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
     </Card>
   );
 };

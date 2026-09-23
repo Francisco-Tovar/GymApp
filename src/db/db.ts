@@ -44,7 +44,7 @@ export const INITIAL_WORKOUTS = [
   {
     name: 'Full Body A (2 Sets to 0 RIR)',
     exerciseNames: [
-      'Hack Squats',
+      'Leg Press',
       'Flat Dumbbell Bench Press',
       'Lat Pulldowns',
       'Seated Leg Curls',
@@ -69,8 +69,8 @@ export const INITIAL_TODAY_SESSION = {
   workoutName: 'Full Body A (2 Sets to 0 RIR)',
   date: new Date().toISOString(),
   sets: [
-    { exerciseName: 'Hack Squats', set_number: 1, weight: 270, reps: 18, unit: 'lb' as WeightUnit },
-    { exerciseName: 'Hack Squats', set_number: 2, weight: 180, reps: 18, unit: 'lb' as WeightUnit },
+    { exerciseName: 'Leg Press', set_number: 1, weight: 270, reps: 18, unit: 'lb' as WeightUnit },
+    { exerciseName: 'Leg Press', set_number: 2, weight: 180, reps: 18, unit: 'lb' as WeightUnit },
     { exerciseName: 'Flat Dumbbell Bench Press', set_number: 1, weight: 25, reps: 13, unit: 'lb' as WeightUnit },
     { exerciseName: 'Flat Dumbbell Bench Press', set_number: 2, weight: 20, reps: 7, unit: 'lb' as WeightUnit },
     { exerciseName: 'Lat Pulldowns', set_number: 1, weight: 66, reps: 14, unit: 'lb' as WeightUnit },
@@ -227,14 +227,43 @@ export const initDatabase = async (): Promise<void> => {
             }
           }
         }
+        // Restore standard Workout A and Workout B routines if initial seed
+        await restoreOriginalWorkouts();
       }
     });
 
-    // Restore standard Workout A and Workout B routines
-    await restoreOriginalWorkouts();
-
-    // Seed dummy progressive overload workouts
+    // Seed dummy progressive overload workouts if not already seeded
     await seedDummyWorkouts();
+
+    // Data healing migration: if Workout A was linked to Hack Squats with 0 sets but Leg Press has history sets, link Leg Press by ID
+    try {
+      const legPressEx = await db.exercises.where('name').equalsIgnoreCase('Leg Press').first();
+      const hackSquatsEx = await db.exercises.where('name').equalsIgnoreCase('Hack Squats').first();
+      if (legPressEx?.id) {
+        const legPressSetsCount = await db.session_sets.where('exercise_id').equals(legPressEx.id).count();
+        if (hackSquatsEx?.id) {
+          const hackSetsCount = await db.session_sets.where('exercise_id').equals(hackSquatsEx.id).count();
+          if (hackSetsCount === 0 && legPressSetsCount > 0) {
+            const weRows = await db.workout_exercises.where('exercise_id').equals(hackSquatsEx.id).toArray();
+            for (const row of weRows) {
+              if (row.id) {
+                const alreadyHasLP = await db.workout_exercises
+                  .where('workout_id').equals(row.workout_id)
+                  .and((we) => we.exercise_id === legPressEx.id)
+                  .first();
+                if (!alreadyHasLP) {
+                  await db.workout_exercises.update(row.id, { exercise_id: legPressEx.id });
+                } else {
+                  await db.workout_exercises.delete(row.id);
+                }
+              }
+            }
+          }
+        }
+      }
+    } catch (migErr) {
+      console.warn('ID healing migration completed:', migErr);
+    }
   })();
 
   return initPromise;
@@ -325,20 +354,6 @@ export const restoreOriginalWorkouts = async (): Promise<void> => {
 
     const canonicalIds = new Set<number>([workoutAId, workoutBId]);
 
-    // 3. Delete ANY workout that is not Workout A or Workout B so they are the ONLY ones
-    for (const w of allWorkouts) {
-      if (w.id && !canonicalIds.has(w.id)) {
-        const extraSessions = await db.sessions.where('workout_id').equals(w.id).toArray();
-        for (const s of extraSessions) {
-          if (s.id) {
-            await db.sessions.update(s.id, { workout_id: workoutAId });
-          }
-        }
-        await db.workout_exercises.where('workout_id').equals(w.id).delete();
-        await db.workouts.delete(w.id);
-      }
-    }
-
     // 4. Strictly reset Workout A exercises to the exact canonical structure
     await db.workout_exercises.where('workout_id').equals(workoutAId).delete();
     for (const exName of INITIAL_WORKOUTS[0].exerciseNames) {
@@ -409,13 +424,11 @@ export const deleteExercise = async (id: number): Promise<void> => {
 export const fetchWorkouts = async (): Promise<Workout[]> => {
   const workouts = await db.workouts.toArray();
   const result: Workout[] = [];
-  const seen = new Set<string>();
+  const seenIds = new Set<number>();
 
   for (const w of workouts) {
-    if (!w.id) continue;
-    const key = w.name.trim().toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
+    if (!w.id || seenIds.has(w.id)) continue;
+    seenIds.add(w.id);
 
     const weRows = await db.workout_exercises.where('workout_id').equals(w.id).toArray();
     const exercises: Exercise[] = [];

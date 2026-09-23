@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "tsx src/utils/progressiveOverload.test.ts && tsx src/utils/routineProgression.test.ts && tsx src/utils/settings.test.ts"
+    "test": "tsx src/utils/progressiveOverload.test.ts && tsx src/utils/routineProgression.test.ts && tsx src/utils/settings.test.ts && tsx src/utils/idTracking.test.ts"
   },
   "dependencies": {
     "dexie": "^4.0.8",

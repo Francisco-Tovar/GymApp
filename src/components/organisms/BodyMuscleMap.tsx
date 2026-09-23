@@ -216,9 +216,9 @@ export const BodyMuscleMap: React.FC<BodyMuscleMapProps> = ({
                     </linearGradient>
                   </defs>
 
-                  {/* Head & Neck */}
+                  {/* Head & Neck (35% bigger head) */}
                   <g stroke="#475569" strokeWidth="1" fill="#0F172A">
-                    <path d="M72 18 C72 10 88 10 88 18 C88 28 84 32 84 36 L76 36 C76 32 72 28 72 18 Z" />
+                    <path d="M69.2 11.7 C69.2 0.9 90.8 0.9 90.8 11.7 C90.8 25.2 85 30.6 84 36 L76 36 C75 30.6 69.2 25.2 69.2 11.7 Z" />
                   </g>
 
                   {/* Traps */}
@@ -288,8 +288,8 @@ export const BodyMuscleMap: React.FC<BodyMuscleMapProps> = ({
                   height={activeView === 'both' ? 260 : 360}
                   style={{ display: 'block' }}
                 >
-                  {/* Head & Neck */}
-                  <path d="M72 18 C72 10 88 10 88 18 C88 28 84 32 84 36 L76 36 C76 32 72 28 72 18 Z" fill="#0F172A" stroke="#475569" strokeWidth="1" />
+                  {/* Head & Neck (35% bigger head) */}
+                  <path d="M69.2 11.7 C69.2 0.9 90.8 0.9 90.8 11.7 C90.8 25.2 85 30.6 84 36 L76 36 C75 30.6 69.2 25.2 69.2 11.7 Z" fill="#0F172A" stroke="#475569" strokeWidth="1" />
 
                   {/* Traps / Upper Back */}
                   <path
