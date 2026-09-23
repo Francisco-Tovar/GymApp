@@ -17,7 +17,7 @@ import { Typography } from '../atoms/Typography';
 import { Card } from '../atoms/Card';
 import { Badge } from '../atoms/Badge';
 import { Button } from '../atoms/Button';
-import { TrendingUp, Award, Activity, Calendar, Dumbbell, Sparkles } from 'lucide-react';
+import { TrendingUp, Award, Activity, Calendar, Dumbbell, Sparkles, X } from 'lucide-react';
 
 export interface ProgressiveOverloadChartProps {
   /**
@@ -45,6 +45,10 @@ export interface ProgressiveOverloadChartProps {
    * Optional custom style
    */
   style?: React.CSSProperties;
+  /**
+   * Optional close modal callback
+   */
+  onClose?: () => void;
 }
 
 export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> = ({
@@ -54,6 +58,7 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
   unit = 'lb',
   title = 'Progressive Overload Tracker',
   style,
+  onClose,
 }) => {
   const [activeMode, setActiveMode] = useState<ProgressionMode>('e1rm');
   const [timeRange, setTimeRange] = useState<TimeRangeInterval>(defaultTimeRange);
@@ -273,36 +278,63 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
           </div>
         </div>
 
-        {/* Exercise Dropdown Selector */}
-        <div style={{ position: 'relative', minWidth: '180px', flex: '1 1 auto', maxWidth: '260px' }}>
-          <select
-            value={selectedExercise}
-            onChange={(e) => setSelectedExercise(e.target.value)}
-            disabled={availableExercises.length === 0}
-            style={{
-              width: '100%',
-              backgroundColor: 'var(--bg-main)',
-              color: 'var(--text-primary)',
-              border: '1px solid var(--border-color)',
-              borderRadius: 'var(--radius-sm)',
-              padding: '8px 12px',
-              fontSize: '13px',
-              fontWeight: 600,
-              cursor: availableExercises.length === 0 ? 'not-allowed' : 'pointer',
-              outline: 'none',
-              appearance: 'auto',
-            }}
-          >
-            {availableExercises.length === 0 ? (
-              <option value="">No exercises recorded</option>
-            ) : (
-              availableExercises.map((ex) => (
-                <option key={ex.id} value={ex.id}>
-                  {ex.name} ({ex.sessionCount} session{ex.sessionCount !== 1 ? 's' : ''})
-                </option>
-              ))
-            )}
-          </select>
+        {/* Exercise Dropdown Selector & Close Button */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '180px', flex: '1 1 auto', maxWidth: '300px', justifyContent: 'flex-end' }}>
+          <div style={{ position: 'relative', width: '100%' }}>
+            <select
+              value={selectedExercise}
+              onChange={(e) => setSelectedExercise(e.target.value)}
+              disabled={availableExercises.length === 0}
+              style={{
+                width: '100%',
+                backgroundColor: 'var(--bg-main)',
+                color: 'var(--text-primary)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-sm)',
+                padding: '8px 12px',
+                fontSize: '13px',
+                fontWeight: 600,
+                cursor: availableExercises.length === 0 ? 'not-allowed' : 'pointer',
+                outline: 'none',
+                appearance: 'auto',
+              }}
+            >
+              {availableExercises.length === 0 ? (
+                <option value="">No exercises recorded</option>
+              ) : (
+                availableExercises.map((ex) => (
+                  <option key={ex.id} value={ex.id}>
+                    {ex.name} ({ex.sessionCount} session{ex.sessionCount !== 1 ? 's' : ''})
+                  </option>
+                ))
+              )}
+            </select>
+          </div>
+
+          {onClose && (
+            <button
+              type="button"
+              onClick={onClose}
+              title="Close Tracker"
+              aria-label="Close Tracker"
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '32px',
+                height: '32px',
+                borderRadius: '50%',
+                border: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-main)',
+                color: 'var(--text-muted)',
+                cursor: 'pointer',
+                transition: 'all 0.2s ease',
+                flexShrink: 0,
+              }}
+            >
+              <X size={16} />
+            </button>
+          )}
         </div>
       </div>
 

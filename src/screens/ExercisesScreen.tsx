@@ -240,6 +240,7 @@ export const ExercisesScreen: React.FC = () => {
           unit={unit}
           title={exerciseForChart ? `${exerciseForChart.name} Overload` : undefined}
           style={{ border: 'none', padding: '0', background: 'transparent', boxShadow: 'none' }}
+          onClose={() => setExerciseForChart(null)}
         />
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
           <Button variant="secondary" onClick={() => setExerciseForChart(null)}>

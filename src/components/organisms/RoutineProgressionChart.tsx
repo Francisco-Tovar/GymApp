@@ -20,6 +20,7 @@ import {
   Eye,
   EyeOff,
   Flame,
+  X,
 } from 'lucide-react';
 
 export interface RoutineProgressionChartProps {
@@ -30,6 +31,7 @@ export interface RoutineProgressionChartProps {
   availableWorkouts?: Array<{ id: number; name: string }>;
   selectedWorkoutId?: number | null;
   onSelectWorkoutId?: (id: number | null) => void;
+  onClose?: () => void;
 }
 
 export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = ({
@@ -40,6 +42,7 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
   availableWorkouts,
   selectedWorkoutId,
   onSelectWorkoutId,
+  onClose,
 }) => {
   const [metricMode, setMetricMode] = useState<RoutineMetricMode>('relativeGrowth');
   const [visibleIds, setVisibleIds] = useState<Set<string>>(new Set());
@@ -292,9 +295,9 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
             </Typography>
           </div>
 
-          {/* Routine Switcher if multiple workouts provided */}
-          {availableWorkouts && availableWorkouts.length > 0 && onSelectWorkoutId && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {/* Routine Switcher if multiple workouts provided */}
+            {availableWorkouts && availableWorkouts.length > 0 && onSelectWorkoutId && (
               <select
                 value={selectedWorkoutId ?? ''}
                 onChange={(e) => {
@@ -320,8 +323,33 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
                   </option>
                 ))}
               </select>
-            </div>
-          )}
+            )}
+
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                title="Close Progression"
+                aria-label="Close Progression"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  border: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-app)',
+                  color: 'var(--text-muted)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  flexShrink: 0,
+                }}
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* KPI Mini Row */}

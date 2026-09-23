@@ -409,6 +409,7 @@ export const WorkoutsScreen: React.FC<WorkoutsScreenProps> = ({
                 unit={unit}
                 title={`${inspectingWorkout.name} Overload`}
                 subtitle="Relative growth & progressive overload tracking across all routine movements"
+                onClose={() => setInspectingWorkout(null)}
               />
             )}
           </div>
