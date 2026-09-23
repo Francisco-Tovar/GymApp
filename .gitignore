@@ -12,6 +12,7 @@ dist
 dist-ssr
 *.local
 .expo
+pwa/
 
 # Editor directories and files
 .vscode/*
