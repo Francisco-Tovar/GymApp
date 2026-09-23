@@ -261,77 +261,91 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
         </button>
       </div>
 
-      {/* Rest Timer Floating Strip */}
+      {/* Sticky Rest Timer Floating Strip */}
       <div
         style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          backgroundColor: 'var(--bg-surface)',
-          border: '1px solid var(--border-color)',
-          borderRadius: 'var(--radius-md)',
-          padding: '8px 12px',
-          marginBottom: '16px',
+          position: 'sticky',
+          top: 0,
+          zIndex: 35,
+          backgroundColor: 'var(--bg-main)',
+          paddingTop: 'calc(var(--safe-top, 0px) + 8px)',
+          paddingBottom: '8px',
+          marginTop: '-8px',
+          marginBottom: '8px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Timer size={16} color="var(--primary)" />
-          <Typography variant="label" color="var(--text-secondary)">
-            {t('rest', language)}:
-          </Typography>
-          {restTimerSeconds !== null ? (
-            <span
-              style={{
-                fontFamily: 'monospace',
-                fontSize: '15px',
-                fontWeight: 700,
-                color: restTimerSeconds < 10 ? 'var(--danger)' : 'var(--accent)',
-              }}
-            >
-              {formatTimer(restTimerSeconds)}
-            </span>
-          ) : (
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{t('off', language)}</span>
-          )}
-        </div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            backgroundColor: 'var(--bg-surface)',
+            border: '1px solid var(--border-color)',
+            borderRadius: 'var(--radius-md)',
+            padding: '8px 12px',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.18)',
+            transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Timer size={16} color="var(--primary)" />
+            <Typography variant="label" color="var(--text-secondary)">
+              {t('rest', language)}:
+            </Typography>
+            {restTimerSeconds !== null ? (
+              <span
+                style={{
+                  fontFamily: 'monospace',
+                  fontSize: '15px',
+                  fontWeight: 700,
+                  color: restTimerSeconds < 10 ? 'var(--danger)' : 'var(--accent)',
+                }}
+              >
+                {formatTimer(restTimerSeconds)}
+              </span>
+            ) : (
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{t('off', language)}</span>
+            )}
+          </div>
 
-        <div style={{ display: 'flex', gap: '4px' }}>
-          {[30, 60, 90, 120].map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => startRestTimer(s)}
-              style={{
-                border: '1px solid var(--border-color)',
-                backgroundColor: restTimerSeconds === s ? 'var(--primary)' : 'var(--bg-main)',
-                color: restTimerSeconds === s ? '#ffffff' : 'var(--text-secondary)',
-                borderRadius: '6px',
-                padding: '4px 8px',
-                fontSize: '11px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              {s}s
-            </button>
-          ))}
-          {restTimerSeconds !== null && (
-            <button
-              type="button"
-              onClick={() => setRestTimerSeconds(null)}
-              style={{
-                border: 'none',
-                background: 'transparent',
-                color: 'var(--danger)',
-                padding: '4px',
-                cursor: 'pointer',
-                fontSize: '11px',
-                fontWeight: 600,
-              }}
-            >
-              {t('reset', language)}
-            </button>
-          )}
+          <div style={{ display: 'flex', gap: '4px' }}>
+            {[30, 60, 90, 120].map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => startRestTimer(s)}
+                style={{
+                  border: '1px solid var(--border-color)',
+                  backgroundColor: restTimerSeconds === s ? 'var(--primary)' : 'var(--bg-main)',
+                  color: restTimerSeconds === s ? '#ffffff' : 'var(--text-secondary)',
+                  borderRadius: '6px',
+                  padding: '4px 8px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {s}s
+              </button>
+            ))}
+            {restTimerSeconds !== null && (
+              <button
+                type="button"
+                onClick={() => setRestTimerSeconds(null)}
+                style={{
+                  border: 'none',
+                  background: 'transparent',
+                  color: 'var(--danger)',
+                  padding: '4px',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                }}
+              >
+                {t('reset', language)}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

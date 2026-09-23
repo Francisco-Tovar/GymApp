@@ -117,7 +117,7 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   min-height: 100dvh;
-  overflow-x: hidden;
+  overflow-x: clip;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
 }
@@ -211,7 +211,6 @@ h1, h2, h3, h4, h5, h6 {
 .main-content {
   flex: 1;
   padding: 16px 16px calc(80px + var(--safe-bottom));
-  overflow-y: auto;
 }
 
 /* Bottom Tab Bar */
