@@ -21,7 +21,7 @@ import { Button } from '../atoms/Button';
 import { Combobox } from '../atoms/Combobox';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { t } from '../../utils/i18n';
-import { TrendingUp, Award, Activity, Calendar, Dumbbell, Sparkles, ArrowLeft, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { TrendingUp, Award, Activity, Calendar, Dumbbell, Sparkles, ArrowLeft, X } from 'lucide-react';
 
 export interface ProgressiveOverloadChartProps {
   /**
@@ -69,7 +69,20 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
   const [timeRange, setTimeRange] = useState<TimeRangeInterval>(defaultTimeRange);
   const [selectedExercise, setSelectedExercise] = useState<string>('');
   const [hoveredPoint, setHoveredPoint] = useState<ProcessedDataPoint | null>(null);
-  const [modalPoint, setModalPoint] = useState<ProcessedDataPoint | null>(null);
+  const [isZoomModalOpen, setIsZoomModalOpen] = useState(false);
+  const [modalHoveredPoint, setModalHoveredPoint] = useState<ProcessedDataPoint | null>(null);
+
+  useEffect(() => {
+    if (!isZoomModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsZoomModalOpen(false);
+        setModalHoveredPoint(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isZoomModalOpen]);
 
   const displayTitle = title || (language === 'es' ? 'Seguimiento de Sobrecarga Progresiva' : 'Progressive Overload Tracker');
 
@@ -143,25 +156,21 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
     };
   }, [dataPoints]);
 
-  // SVG Chart Layout Metrics
-  const chartWidth = 600;
-  const chartHeight = 240;
-  const padLeft = 60;
-  const padRight = 30;
-  const padTop = 30;
-  const padBottom = 40;
+  // Render SVG Line Graph (shared between compact card and zoomed modal)
+  const renderSvgChart = (zoomed: boolean) => {
+    const chartWidth = zoomed ? 960 : 600;
+    const chartHeight = zoomed ? 780 : 240;
+    const padLeft = zoomed ? 50 : 54;
+    const padRight = zoomed ? 20 : 24;
+    const padTop = zoomed ? 26 : 24;
+    const padBottom = zoomed ? 42 : 38;
 
-  const innerWidth = chartWidth - padLeft - padRight;
-  const innerHeight = chartHeight - padTop - padBottom;
-
-  const { minY, maxY, pointsWithCoords } = useMemo(() => {
-    if (dataPoints.length === 0) {
-      return { minY: 0, maxY: 100, pointsWithCoords: [] };
-    }
+    const innerWidth = chartWidth - padLeft - padRight;
+    const innerHeight = chartHeight - padTop - padBottom;
 
     const values = dataPoints.map((p) => p.value);
-    const rawMin = Math.min(...values);
-    const rawMax = Math.max(...values);
+    const rawMin = values.length > 0 ? Math.min(...values) : 0;
+    const rawMax = values.length > 0 ? Math.max(...values) : 100;
 
     let calcMin = Math.max(0, Math.floor(rawMin * 0.9));
     let calcMax = Math.ceil(rawMax * 1.1);
@@ -171,8 +180,7 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
       calcMax = calcMax + 10;
     }
 
-    // Coordinates mapping
-    const coords = dataPoints.map((point, index) => {
+    const layoutPoints = dataPoints.map((point, index) => {
       let x = padLeft + innerWidth / 2;
       if (dataPoints.length > 1) {
         x = padLeft + (index / (dataPoints.length - 1)) * innerWidth;
@@ -188,54 +196,271 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
       };
     });
 
-    return { minY: calcMin, maxY: calcMax, pointsWithCoords: coords };
-  }, [dataPoints, innerWidth, innerHeight, padLeft, padBottom, chartHeight]);
-
-  // Generate SVG path for line and gradient area
-  const { linePath, areaPath } = useMemo(() => {
-    if (pointsWithCoords.length === 0) return { linePath: '', areaPath: '' };
-
-    if (pointsWithCoords.length === 1) {
-      const p = pointsWithCoords[0];
+    let linePath = '';
+    let areaPath = '';
+    if (layoutPoints.length === 1) {
+      const p = layoutPoints[0];
       const startX = p.x - 20;
       const endX = p.x + 20;
-      const lPath = `M ${startX} ${p.y} L ${endX} ${p.y}`;
-      const aPath = `M ${startX} ${p.y} L ${endX} ${p.y} L ${endX} ${chartHeight - padBottom} L ${startX} ${chartHeight - padBottom} Z`;
-      return { linePath: lPath, areaPath: aPath };
+      linePath = `M ${startX} ${p.y} L ${endX} ${p.y}`;
+      areaPath = `M ${startX} ${p.y} L ${endX} ${p.y} L ${endX} ${chartHeight - padBottom} L ${startX} ${chartHeight - padBottom} Z`;
+    } else if (layoutPoints.length > 1) {
+      const first = layoutPoints[0];
+      linePath = `M ${first.x} ${first.y}`;
+
+      for (let i = 0; i < layoutPoints.length - 1; i++) {
+        const p0 = layoutPoints[i];
+        const p1 = layoutPoints[i + 1];
+        const midX = (p0.x + p1.x) / 2;
+        linePath += ` C ${midX} ${p0.y}, ${midX} ${p1.y}, ${p1.x} ${p1.y}`;
+      }
+
+      const last = layoutPoints[layoutPoints.length - 1];
+      areaPath = `${linePath} L ${last.x} ${chartHeight - padBottom} L ${first.x} ${chartHeight - padBottom} Z`;
     }
 
-    const first = pointsWithCoords[0];
-    let lPath = `M ${first.x} ${first.y}`;
-
-    // Smooth cubic bezier curves between points
-    for (let i = 0; i < pointsWithCoords.length - 1; i++) {
-      const p0 = pointsWithCoords[i];
-      const p1 = pointsWithCoords[i + 1];
-      const midX = (p0.x + p1.x) / 2;
-      lPath += ` C ${midX} ${p0.y}, ${midX} ${p1.y}, ${p1.x} ${p1.y}`;
-    }
-
-    const last = pointsWithCoords[pointsWithCoords.length - 1];
-    const aPath = `${lPath} L ${last.x} ${chartHeight - padBottom} L ${first.x} ${chartHeight - padBottom} Z`;
-
-    return { linePath: lPath, areaPath: aPath };
-  }, [pointsWithCoords, chartHeight, padBottom]);
-
-  // Calculate 4 clean tick marks for Y-axis
-  const yTicks = useMemo(() => {
-    const ticksCount = 4;
-    const step = (maxY - minY) / (ticksCount - 1);
-    const ticks: { value: number; y: number }[] = [];
+    const ticksCount = zoomed ? 6 : 4;
+    const step = (calcMax - calcMin) / (ticksCount - 1);
+    const yTicks: { value: number; y: number }[] = [];
 
     for (let i = 0; i < ticksCount; i++) {
-      const val = Math.round(minY + step * i);
-      const yRatio = (val - minY) / (maxY - minY || 1);
+      const val = Math.round(calcMin + step * i);
+      const yRatio = (val - calcMin) / (calcMax - calcMin || 1);
       const y = chartHeight - padBottom - yRatio * innerHeight;
-      ticks.push({ value: val, y });
+      yTicks.push({ value: val, y });
     }
 
-    return ticks;
-  }, [minY, maxY, innerHeight, padBottom, chartHeight]);
+    const activePoint = zoomed ? (modalHoveredPoint || dataPoints[dataPoints.length - 1]) : hoveredPoint;
+    const gradId = zoomed ? 'overloadGradientZoom' : 'overloadGradient';
+    const glowId = zoomed ? 'glowZoom' : 'glow';
+
+    return (
+      <div
+        style={{
+          position: 'relative',
+          backgroundColor: zoomed ? 'transparent' : 'var(--bg-main)',
+          borderRadius: zoomed ? '0' : 'var(--radius-md)',
+          border: zoomed ? 'none' : '1px solid var(--border-color)',
+          padding: zoomed ? '0' : '12px 8px 8px 8px',
+          overflow: 'hidden',
+          width: '100%',
+          cursor: !zoomed ? 'zoom-in' : 'default',
+        }}
+        title={!zoomed ? (language === 'es' ? 'Toca para ampliar el gráfico' : 'Tap to zoom graph') : undefined}
+        onClick={() => {
+          if (!zoomed) {
+            setIsZoomModalOpen(true);
+            setModalHoveredPoint(hoveredPoint || dataPoints[dataPoints.length - 1]);
+          }
+        }}
+      >
+        {/* Y-Axis Label Badge */}
+        <div
+          style={{
+            position: 'absolute',
+            top: zoomed ? '6px' : '8px',
+            left: zoomed ? '8px' : '12px',
+            zIndex: 2,
+          }}
+        >
+          <span
+            style={{
+              fontSize: zoomed ? '11px' : '10px',
+              fontWeight: 700,
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
+              color: 'var(--text-muted)',
+              backgroundColor: 'rgba(30, 41, 59, 0.85)',
+              padding: '2px 8px',
+              borderRadius: '4px',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+            }}
+          >
+            {getModeYAxisLabel(activeMode, unit)}
+          </span>
+        </div>
+
+        {/* SVG Canvas */}
+        <svg
+          viewBox={`0 0 ${chartWidth} ${chartHeight}`}
+          style={{
+            width: '100%',
+            height: 'auto',
+            maxHeight: zoomed ? '78dvh' : undefined,
+            display: 'block',
+            overflow: 'visible',
+            cursor: !zoomed ? 'zoom-in' : 'default',
+          }}
+        >
+          <defs>
+            <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.35" />
+              <stop offset="80%" stopColor="var(--primary)" stopOpacity="0.06" />
+              <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.0" />
+            </linearGradient>
+
+            <filter id={glowId} x="-20%" y="-20%" width="140%" height="140%">
+              <feGaussianBlur stdDeviation="3" result="blur" />
+              <feComposite in="SourceGraphic" in2="blur" operator="over" />
+            </filter>
+          </defs>
+
+          {/* Horizontal Grid lines and Y-axis tick values */}
+          {yTicks.map((tick, idx) => (
+            <g key={`ytick-${idx}`}>
+              <line
+                x1={padLeft}
+                y1={tick.y}
+                x2={chartWidth - padRight}
+                y2={tick.y}
+                stroke="rgba(255, 255, 255, 0.08)"
+                strokeDasharray="4 4"
+                strokeWidth="1"
+              />
+              <text
+                x={padLeft - 8}
+                y={tick.y + 4}
+                fill="var(--text-muted)"
+                fontSize={zoomed ? '13' : '11'}
+                fontWeight="700"
+                fontFamily="var(--font-body)"
+                textAnchor="end"
+              >
+                {tick.value.toLocaleString()}
+              </text>
+            </g>
+          ))}
+
+          {/* Area under the line */}
+          {areaPath && (
+            <path
+              d={areaPath}
+              fill={`url(#${gradId})`}
+              style={{ transition: 'd 0.3s ease-out' }}
+            />
+          )}
+
+          {/* Main Progression Line */}
+          {linePath && (
+            <path
+              d={linePath}
+              fill="none"
+              stroke="var(--primary)"
+              strokeWidth={zoomed ? '4' : '3.5'}
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{
+                transition: 'd 0.3s ease-out',
+                filter: 'drop-shadow(0px 2px 8px var(--primary-glow))',
+              }}
+            />
+          )}
+
+          {/* X-Axis Baseline */}
+          <line
+            x1={padLeft}
+            y1={chartHeight - padBottom}
+            x2={chartWidth - padRight}
+            y2={chartHeight - padBottom}
+            stroke="var(--border-color)"
+            strokeWidth="1"
+          />
+
+          {/* Active Crosshair Line on hovered point */}
+          {activePoint && (
+            (() => {
+              const targetCoord = layoutPoints.find((p) => p.id === activePoint.id);
+              if (!targetCoord) return null;
+              return (
+                <line
+                  x1={targetCoord.x}
+                  y1={padTop}
+                  x2={targetCoord.x}
+                  y2={chartHeight - padBottom}
+                  stroke="var(--primary)"
+                  strokeOpacity="0.5"
+                  strokeWidth="1.5"
+                  strokeDasharray="3 3"
+                />
+              );
+            })()
+          )}
+
+          {/* Data Points and X-Axis Date Labels */}
+          {layoutPoints.map((point, index) => {
+            const isHovered = activePoint?.id === point.id;
+            const shouldShowDate = zoomed
+              ? (index === 0 || index === layoutPoints.length - 1 || layoutPoints.length <= 8 || index === Math.floor(layoutPoints.length * 0.25) || index === Math.floor(layoutPoints.length * 0.5) || index === Math.floor(layoutPoints.length * 0.75))
+              : (layoutPoints.length <= 6 || index === 0 || index === layoutPoints.length - 1 || index === Math.floor(layoutPoints.length / 2));
+
+            return (
+              <g key={point.id}>
+                {shouldShowDate && (
+                  <text
+                    x={point.x}
+                    y={chartHeight - padBottom + (zoomed ? 22 : 18)}
+                    fill={isHovered ? 'var(--text-primary)' : 'var(--text-muted)'}
+                    fontSize={zoomed ? '13' : '10'}
+                    fontFamily="var(--font-body)"
+                    textAnchor="middle"
+                    fontWeight={isHovered ? 700 : 500}
+                  >
+                    {point.dateFormatted}
+                  </text>
+                )}
+
+                {isHovered && (
+                  <circle
+                    cx={point.x}
+                    cy={point.y}
+                    r={zoomed ? '14' : '12'}
+                    fill="var(--primary-subtle)"
+                    filter={`url(#${glowId})`}
+                  />
+                )}
+
+                <circle
+                  cx={point.x}
+                  cy={point.y}
+                  r={isHovered ? (zoomed ? 8 : 6) : (zoomed ? 5.5 : 4.5)}
+                  fill={isHovered ? '#ffffff' : 'var(--primary)'}
+                  stroke="#0f172a"
+                  strokeWidth={isHovered ? 2.5 : 2}
+                  style={{
+                    transition: 'all 0.15s ease',
+                    cursor: !zoomed ? 'zoom-in' : 'pointer',
+                  }}
+                />
+
+                {/* Large invisible tap/hover target */}
+                <circle
+                  cx={point.x}
+                  cy={point.y}
+                  r={zoomed ? '26' : '20'}
+                  fill="transparent"
+                  style={{ cursor: !zoomed ? 'zoom-in' : 'pointer' }}
+                  onMouseEnter={() => {
+                    if (zoomed) setModalHoveredPoint(point);
+                    else setHoveredPoint(point);
+                  }}
+                  onClick={(e) => {
+                    if (!zoomed) {
+                      setIsZoomModalOpen(true);
+                      setHoveredPoint(point);
+                      setModalHoveredPoint(point);
+                    } else {
+                      e.stopPropagation();
+                      setModalHoveredPoint(point);
+                    }
+                  }}
+                />
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+    );
+  };
 
   const activeExerciseName =
     availableExercises.find((ex) => ex.id === selectedExercise)?.name || 'Selected Exercise';
@@ -536,7 +761,7 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
       )}
 
       {/* Interactive Line Chart Area */}
-      {pointsWithCoords.length === 0 ? (
+      {dataPoints.length === 0 ? (
         <div
           style={{
             display: 'flex',
@@ -574,236 +799,7 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
           )}
         </div>
       ) : (
-        <div
-          style={{
-            position: 'relative',
-            backgroundColor: 'var(--bg-main)',
-            borderRadius: 'var(--radius-md)',
-            border: '1px solid var(--border-color)',
-            padding: '12px 8px 8px 8px',
-            overflow: 'hidden',
-          }}
-        >
-          {/* Y-Axis Label Badge */}
-          <div
-            style={{
-              position: 'absolute',
-              top: '8px',
-              left: '12px',
-              zIndex: 2,
-            }}
-          >
-            <span
-              style={{
-                fontSize: '10px',
-                fontWeight: 700,
-                letterSpacing: '0.04em',
-                textTransform: 'uppercase',
-                color: 'var(--text-muted)',
-                backgroundColor: 'rgba(30, 41, 59, 0.8)',
-                padding: '2px 6px',
-                borderRadius: '4px',
-                border: '1px solid rgba(255, 255, 255, 0.05)',
-              }}
-            >
-              {getModeYAxisLabel(activeMode, unit)}
-            </span>
-          </div>
-
-          {/* SVG Canvas */}
-          <svg
-            viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-            style={{
-              width: '100%',
-              height: 'auto',
-              display: 'block',
-              overflow: 'visible',
-              cursor: 'pointer',
-            }}
-            onClick={(e) => {
-              if (dataPoints.length === 0) return;
-              const rect = e.currentTarget.getBoundingClientRect();
-              const relativeX = (e.clientX - rect.left) * (chartWidth / rect.width);
-              let closestPt = dataPoints[0];
-              let closestDist = Infinity;
-              pointsWithCoords.forEach((p) => {
-                const dist = Math.abs(p.x - relativeX);
-                if (dist < closestDist) {
-                  closestDist = dist;
-                  const found = dataPoints.find((dp) => dp.id === p.id);
-                  if (found) closestPt = found;
-                }
-              });
-              setHoveredPoint(closestPt);
-              setModalPoint(closestPt);
-            }}
-          >
-            <defs>
-              {/* Gradient fill beneath line */}
-              <linearGradient id="overloadGradient" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.35" />
-                <stop offset="80%" stopColor="var(--primary)" stopOpacity="0.05" />
-                <stop offset="100%" stopColor="var(--primary)" stopOpacity="0.0" />
-              </linearGradient>
-
-              {/* Point glow filter */}
-              <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="3" result="blur" />
-                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-              </filter>
-            </defs>
-
-            {/* Horizontal Grid lines and Y-axis tick values */}
-            {yTicks.map((tick, idx) => (
-              <g key={`ytick-${idx}`}>
-                <line
-                  x1={padLeft}
-                  y1={tick.y}
-                  x2={chartWidth - padRight}
-                  y2={tick.y}
-                  stroke="rgba(255, 255, 255, 0.07)"
-                  strokeDasharray="4 4"
-                  strokeWidth="1"
-                />
-                <text
-                  x={padLeft - 10}
-                  y={tick.y + 4}
-                  fill="var(--text-muted)"
-                  fontSize="11"
-                  fontFamily="var(--font-body)"
-                  textAnchor="end"
-                >
-                  {tick.value.toLocaleString()}
-                </text>
-              </g>
-            ))}
-
-            {/* Area under the line */}
-            {areaPath && (
-              <path
-                d={areaPath}
-                fill="url(#overloadGradient)"
-                style={{ transition: 'd 0.3s ease-out' }}
-              />
-            )}
-
-            {/* Main Progression Line */}
-            {linePath && (
-              <path
-                d={linePath}
-                fill="none"
-                stroke="var(--primary)"
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                style={{
-                  transition: 'd 0.3s ease-out',
-                  filter: 'drop-shadow(0px 2px 8px var(--primary-glow))',
-                }}
-              />
-            )}
-
-            {/* X-Axis Baseline */}
-            <line
-              x1={padLeft}
-              y1={chartHeight - padBottom}
-              x2={chartWidth - padRight}
-              y2={chartHeight - padBottom}
-              stroke="var(--border-color)"
-              strokeWidth="1"
-            />
-
-            {/* Active Crosshair Line on hovered point */}
-            {hoveredPoint && (
-              (() => {
-                const targetCoord = pointsWithCoords.find((p) => p.id === hoveredPoint.id);
-                if (!targetCoord) return null;
-                return (
-                  <line
-                    x1={targetCoord.x}
-                    y1={padTop}
-                    x2={targetCoord.x}
-                    y2={chartHeight - padBottom}
-                    stroke="var(--primary)"
-                    strokeOpacity="0.5"
-                    strokeWidth="1.5"
-                    strokeDasharray="3 3"
-                  />
-                );
-              })()
-            )}
-
-            {/* Data Points and X-Axis Date Labels */}
-            {pointsWithCoords.map((point, index) => {
-              const isHovered = hoveredPoint?.id === point.id;
-              // Determine if we should display the date label below this point
-              const shouldShowDate =
-                pointsWithCoords.length <= 6 ||
-                index === 0 ||
-                index === pointsWithCoords.length - 1 ||
-                index === Math.floor(pointsWithCoords.length / 2);
-
-              return (
-                <g key={point.id}>
-                  {/* X-Axis Date Label */}
-                  {shouldShowDate && (
-                    <text
-                      x={point.x}
-                      y={chartHeight - padBottom + 18}
-                      fill={isHovered ? 'var(--text-primary)' : 'var(--text-muted)'}
-                      fontSize="10"
-                      fontFamily="var(--font-body)"
-                      textAnchor="middle"
-                      fontWeight={isHovered ? 700 : 500}
-                    >
-                      {point.dateFormatted}
-                    </text>
-                  )}
-
-                  {/* Pulsing halo around active/hovered point */}
-                  {isHovered && (
-                    <circle
-                      cx={point.x}
-                      cy={point.y}
-                      r="12"
-                      fill="var(--primary-subtle)"
-                      filter="url(#glow)"
-                    />
-                  )}
-
-                  {/* Visible data point circle */}
-                  <circle
-                    cx={point.x}
-                    cy={point.y}
-                    r={isHovered ? 6 : 4.5}
-                    fill={isHovered ? '#ffffff' : 'var(--primary)'}
-                    stroke="#0f172a"
-                    strokeWidth={isHovered ? 2.5 : 2}
-                    style={{
-                      transition: 'all 0.15s ease',
-                      cursor: 'pointer',
-                    }}
-                  />
-
-                  {/* Large invisible tap/hover target (mobile friendly) */}
-                  <circle
-                    cx={point.x}
-                    cy={point.y}
-                    r="20"
-                    fill="transparent"
-                    style={{ cursor: 'pointer' }}
-                    onMouseEnter={() => setHoveredPoint(point)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setHoveredPoint(point);
-                      setModalPoint(point);
-                    }}
-                  />
-                </g>
-              );
-            })}
-          </svg>
-        </div>
+        renderSvgChart(false)
       )}
 
       {/* Subtle Hint indicating the graph is interactive */}
@@ -886,194 +882,158 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
           </div>
         </div>
       )}
-      {/* Fullscreen Point Detail Modal */}
-      {modalPoint && typeof document !== 'undefined' && (() => {
-        const pointIndex = dataPoints.findIndex((p) => p.id === modalPoint.id);
-
-        return createPortal(
+      {/* Fullscreen Zoom Modal (ZOOM VERSION OF THE EXERCISE GRAPH) */}
+      {isZoomModalOpen && typeof document !== 'undefined' && createPortal(
+        <div
+          className="modal-portal-backdrop animate-fade-in"
+          onClick={() => {
+            setIsZoomModalOpen(false);
+            setModalHoveredPoint(null);
+          }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: '100vw',
+            height: '100dvh',
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            backdropFilter: 'blur(8px)',
+            WebkitBackdropFilter: 'blur(8px)',
+            zIndex: 10002,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '8px',
+          }}
+        >
           <div
-            className="modal-portal-backdrop animate-fade-in"
-            onClick={() => setModalPoint(null)}
+            className="modal-portal-content"
+            onClick={(e) => e.stopPropagation()}
             style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              width: '100vw',
-              height: '100dvh',
-              backgroundColor: 'rgba(0, 0, 0, 0.82)',
-              backdropFilter: 'blur(8px)',
-              WebkitBackdropFilter: 'blur(8px)',
-              zIndex: 10002,
+              backgroundColor: 'var(--bg-surface)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-lg, 12px)',
+              width: '100%',
+              maxWidth: '1120px',
+              maxHeight: '96dvh',
               display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '16px',
+              flexDirection: 'column',
+              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.85)',
+              overflow: 'hidden',
+              animation: 'scaleUp 0.18s cubic-bezier(0.16, 1, 0.3, 1)',
             }}
           >
+            {/* Header */}
             <div
-              className="modal-portal-content"
-              onClick={(e) => e.stopPropagation()}
               style={{
-                backgroundColor: 'var(--bg-surface)',
-                border: '1px solid var(--border-color)',
-                borderRadius: 'var(--radius-lg)',
-                width: '100%',
-                maxWidth: '560px',
-                maxHeight: '92dvh',
                 display: 'flex',
-                flexDirection: 'column',
-                boxShadow: '0 25px 60px rgba(0, 0, 0, 0.85)',
-                overflow: 'hidden',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                padding: '12px 18px',
+                borderBottom: '1px solid var(--border-color)',
+                backgroundColor: 'var(--bg-elevated)',
+                gap: '12px',
               }}
             >
-              {/* Header */}
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '16px 20px',
-                  borderBottom: '1px solid var(--border-color)',
-                  backgroundColor: 'var(--bg-elevated)',
-                  gap: '12px',
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+                <TrendingUp size={20} color="var(--primary)" style={{ flexShrink: 0 }} />
+                <Typography variant="h3" style={{ fontSize: '17px', fontWeight: 800, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {activeExerciseName}
+                </Typography>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setIsZoomModalOpen(false);
+                  setModalHoveredPoint(null);
                 }}
+                className="btn btn-secondary btn-icon"
+                style={{ width: '32px', height: '32px', flexShrink: 0 }}
+                title={t('close', language)}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <Calendar size={20} color="var(--primary)" />
-                  <div>
-                    <Typography variant="h3" style={{ fontSize: '16px', fontWeight: 800 }}>
-                      {activeExerciseName}
-                    </Typography>
-                    <Typography variant="caption" color="var(--text-muted)">
-                      {modalPoint.date.toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', {
-                        weekday: 'long',
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric',
-                      })}
-                    </Typography>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <button
-                    type="button"
-                    disabled={pointIndex <= 0}
-                    onClick={() => {
-                      if (pointIndex > 0) {
-                        const prevPt = dataPoints[pointIndex - 1];
-                        setModalPoint(prevPt);
-                        setHoveredPoint(prevPt);
-                      }
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: 'var(--radius-sm)',
-                      border: '1px solid var(--border-color)',
-                      backgroundColor: pointIndex <= 0 ? 'transparent' : 'var(--bg-surface)',
-                      color: pointIndex <= 0 ? 'var(--text-subtle)' : 'var(--text-primary)',
-                      cursor: pointIndex <= 0 ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    <ChevronLeft size={18} />
-                  </button>
-
-                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: 700, padding: '0 4px' }}>
-                    {pointIndex + 1} / {dataPoints.length}
-                  </span>
-
-                  <button
-                    type="button"
-                    disabled={pointIndex >= dataPoints.length - 1}
-                    onClick={() => {
-                      if (pointIndex < dataPoints.length - 1) {
-                        const nextPt = dataPoints[pointIndex + 1];
-                        setModalPoint(nextPt);
-                        setHoveredPoint(nextPt);
-                      }
-                    }}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: 'var(--radius-sm)',
-                      border: '1px solid var(--border-color)',
-                      backgroundColor: pointIndex >= dataPoints.length - 1 ? 'transparent' : 'var(--bg-surface)',
-                      color: pointIndex >= dataPoints.length - 1 ? 'var(--text-subtle)' : 'var(--text-primary)',
-                      cursor: pointIndex >= dataPoints.length - 1 ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    <ChevronRight size={18} />
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setModalPoint(null)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: 'var(--radius-sm)',
-                      border: '1px solid var(--border-color)',
-                      backgroundColor: 'transparent',
-                      color: 'var(--text-secondary)',
-                      cursor: 'pointer',
-                      marginLeft: '4px',
-                    }}
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
-              </div>
-
-              {/* Body */}
-              <div style={{ padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px', flex: 1 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 600 }}>
-                    {getModeYAxisLabel(activeMode, unit)}:
-                  </span>
-                  <Badge variant="primary" style={{ fontSize: '14px', padding: '4px 10px', fontWeight: 800 }}>
-                    {modalPoint.displayValue}
-                  </Badge>
-                </div>
-
-                {modalPoint.subValue && (
-                  <Typography variant="caption" color="var(--text-muted)">
-                    {modalPoint.subValue}
-                  </Typography>
-                )}
-
-                <div style={{ backgroundColor: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
-                  <Typography variant="label" color="var(--primary)" style={{ fontWeight: 700, marginBottom: '8px', display: 'block' }}>
-                    {language === 'es' ? 'Desglose de Series' : 'Sets Breakdown'}
-                  </Typography>
-                  <Typography variant="body" style={{ fontSize: '13px', lineHeight: 1.6 }}>
-                    {modalPoint.allSetsSummary}
-                  </Typography>
-                </div>
-              </div>
-
-              {/* Footer */}
-              <div style={{ padding: '12px 20px', borderTop: '1px solid var(--border-color)', backgroundColor: 'var(--bg-elevated)', display: 'flex', justifyContent: 'flex-end' }}>
-                <Button variant="secondary" onClick={() => setModalPoint(null)} style={{ minWidth: '90px' }}>
-                  {t('close', language)}
-                </Button>
-              </div>
+                <X size={16} />
+              </button>
             </div>
-          </div>,
-          document.body
-        );
-      })()}
+
+            {/* Body - Zoomed Graph ONLY */}
+            <div
+              style={{
+                padding: '10px 8px 14px 8px',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                flex: 1,
+                overflowY: 'auto',
+                overflowX: 'hidden',
+              }}
+            >
+              <div style={{ width: '100%' }}>
+                {renderSvgChart(true)}
+              </div>
+
+              {/* Point Details Pill in Modal */}
+              {(() => {
+                const currentPt = modalHoveredPoint || dataPoints[dataPoints.length - 1];
+                if (!currentPt) return null;
+
+                return (
+                  <div
+                    style={{
+                      marginTop: '8px',
+                      padding: '8px 14px',
+                      background: 'var(--bg-elevated)',
+                      border: '1px solid var(--border-color)',
+                      borderRadius: 'var(--radius-md, 8px)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      flexWrap: 'wrap',
+                      gap: '12px',
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.25)',
+                      maxWidth: '920px',
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Calendar size={14} style={{ color: 'var(--text-tertiary)' }} />
+                      <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                        {currentPt.date.toLocaleDateString(language === 'es' ? 'es-ES' : 'en-US', {
+                          weekday: 'short',
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span style={{ color: 'var(--primary)', fontWeight: 800, fontSize: '14px' }}>
+                        {currentPt.displayValue}
+                      </span>
+                      {currentPt.subValue && (
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          ({currentPt.subValue})
+                        </span>
+                      )}
+                    </div>
+
+                    {currentPt.allSetsSummary && (
+                      <div style={{ fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <Dumbbell size={12} style={{ color: 'var(--text-tertiary)' }} />
+                        <span>{currentPt.allSetsSummary}</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </Card>
   );
 };

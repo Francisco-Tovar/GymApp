@@ -5,7 +5,7 @@ import { useSettingsStore } from '../../store/useSettingsStore';
 import { t } from '../../utils/i18n';
 import { Modal } from '../atoms/Modal';
 import { Typography } from '../atoms/Typography';
-import { Scale, Percent, Calendar, FileText, X, Check, Trash2 } from 'lucide-react';
+import { Scale, Calendar, FileText, X, Check, Trash2 } from 'lucide-react';
 
 export interface BodyMetricModalProps {
   isOpen: boolean;
@@ -171,7 +171,6 @@ export const BodyMetricModal: React.FC<BodyMetricModalProps> = ({
         {/* Optional Body Fat % Field */}
         <div className="form-group">
           <label className="form-label">
-            <Percent size={13} style={{ display: 'inline', marginRight: '4px' }} />
             {t('body_fat_optional', language)}
           </label>
           <div className="form-input-group">

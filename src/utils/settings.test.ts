@@ -24,6 +24,12 @@ function runSettingsTestSuite() {
   console.assert(t('add_set', 'es') === 'Agregar Serie', 'Spanish add_set mismatch');
   console.assert(t('finish_workout', 'es') === 'Finalizar Entrenamiento', 'Spanish finish_workout mismatch');
   console.assert(t('cancel_session_title', 'es') === '¿Cancelar Sesión?', 'Spanish cancel_session_title mismatch');
+  console.assert(t('metric_view_fat', 'en') === 'Body Fat %', 'English metric_view_fat should be Body Fat %');
+  console.assert(t('metric_view_fat', 'es') === 'Grasa %', 'Spanish metric_view_fat should be Grasa %');
+  console.assert(!t('metric_view_fat', 'es').startsWith('%'), 'Spanish metric_view_fat should not start with %');
+  console.assert(!t('metric_view_fat', 'en').startsWith('%'), 'English metric_view_fat should not start with %');
+  console.assert(t('body_fat', 'es') === 'Grasa Corporal %', 'Spanish body_fat should be Grasa Corporal %');
+  console.assert(!t('body_fat', 'es').startsWith('%'), 'Spanish body_fat should not start with %');
 
   // Test 3: Muscle Group Translations
   console.assert(translateMuscleGroup('Quadriceps', 'es') === 'Cuádriceps', 'Quadriceps ES mismatch');
