@@ -1,7 +1,7 @@
 import Dexie, { type EntityTable } from 'dexie';
-import { Exercise, Workout, WorkoutExercise, Session, SessionSet, WeightUnit } from '../types';
+import { Exercise, Workout, WorkoutExercise, Session, SessionSet, WeightUnit, UserProfile, BodyMetricLog } from '../types';
 import { convertWeight } from '../utils/unitConversion';
-import { seedDummyWorkouts } from './seedDummyData';
+import { seedDummyWorkouts, seedDummyBodyMetrics } from './seedDummyData';
 import { RoutineSessionRecord, RoutineExerciseInput } from '../utils/routineProgression';
 
 export class GymAppDatabase extends Dexie {
@@ -10,6 +10,8 @@ export class GymAppDatabase extends Dexie {
   workout_exercises!: EntityTable<WorkoutExercise, 'id'>;
   sessions!: EntityTable<{ id?: number; workout_id: number; date: string }, 'id'>;
   session_sets!: EntityTable<SessionSet, 'id'>;
+  user_profile!: EntityTable<UserProfile, 'id'>;
+  body_metrics!: EntityTable<BodyMetricLog, 'id'>;
 
   constructor() {
     super('GymAppDB');
@@ -20,24 +22,28 @@ export class GymAppDatabase extends Dexie {
       sessions: '++id, workout_id, date',
       session_sets: '++id, session_id, exercise_id, set_number',
     });
+    this.version(2).stores({
+      user_profile: '++id',
+      body_metrics: '++id, date',
+    });
   }
 }
 
 export const db = new GymAppDatabase();
 
 export const INITIAL_EXERCISES = [
-  { name: 'Hack Squats', muscle_groups: 'Quadriceps, Glutes' },
-  { name: 'Flat Dumbbell Bench Press', muscle_groups: 'Chest, Shoulders, Triceps' },
-  { name: 'Lat Pulldowns', muscle_groups: 'Lats, Upper Back, Biceps' },
-  { name: 'Seated Leg Curls', muscle_groups: 'Hamstrings' },
-  { name: 'DB Lateral Raises', muscle_groups: 'Side Deltoids, Shoulders' },
-  { name: 'DB Bicep Curls', muscle_groups: 'Biceps, Forearms' },
-  { name: 'EZ-Bar Romanian Deadlifts', muscle_groups: 'Hamstrings, Glutes, Lower Back' },
-  { name: 'Incline Bench Press', muscle_groups: 'Upper Chest, Shoulders, Triceps' },
-  { name: 'Seated Cable Rows', muscle_groups: 'Upper Back, Lats, Biceps' },
-  { name: 'Leg Press', muscle_groups: 'Quadriceps, Glutes' },
-  { name: 'Triceps Rope Pushdowns', muscle_groups: 'Triceps' },
-  { name: 'Standing Calf Raises', muscle_groups: 'Calves' },
+  { name: 'Hack Squats', muscle_groups: 'Quadriceps, Glutes', imageUrl: '/exercises/hack-squats.jpg' },
+  { name: 'Flat Dumbbell Bench Press', muscle_groups: 'Chest, Shoulders, Triceps', imageUrl: '/exercises/flat-dumbbell-bench-press.jpg' },
+  { name: 'Lat Pulldowns', muscle_groups: 'Lats, Upper Back, Biceps', imageUrl: '/exercises/lat-pulldowns.jpg' },
+  { name: 'Seated Leg Curls', muscle_groups: 'Hamstrings', imageUrl: '/exercises/seated-leg-curls.jpg' },
+  { name: 'DB Lateral Raises', muscle_groups: 'Side Deltoids, Shoulders', imageUrl: '/exercises/db-lateral-raises.jpg' },
+  { name: 'DB Bicep Curls', muscle_groups: 'Biceps, Forearms', imageUrl: '/exercises/db-bicep-curls.jpg' },
+  { name: 'EZ-Bar Romanian Deadlifts', muscle_groups: 'Hamstrings, Glutes, Lower Back', imageUrl: '/exercises/ez-bar-romanian-deadlifts.jpg' },
+  { name: 'Incline Bench Press', muscle_groups: 'Upper Chest, Shoulders, Triceps', imageUrl: '/exercises/incline-bench-press.jpg' },
+  { name: 'Seated Cable Rows', muscle_groups: 'Upper Back, Lats, Biceps', imageUrl: '/exercises/seated-cable-rows.jpg' },
+  { name: 'Leg Press', muscle_groups: 'Quadriceps, Glutes', imageUrl: '/exercises/leg-press.jpg' },
+  { name: 'Triceps Rope Pushdowns', muscle_groups: 'Triceps', imageUrl: '/exercises/triceps-rope-pushdowns.jpg' },
+  { name: 'Standing Calf Raises', muscle_groups: 'Calves', imageUrl: '/exercises/standing-calf-raises.jpg' },
 ];
 
 export const INITIAL_WORKOUTS = [
@@ -171,8 +177,11 @@ export const initDatabase = async (): Promise<void> => {
           const existing = await db.exercises.where('name').equalsIgnoreCase(ex.name).first();
           if (existing && existing.id) {
             exerciseIdMap[ex.name] = existing.id;
+            if (!existing.imageUrl && ex.imageUrl) {
+              await db.exercises.update(existing.id, { imageUrl: ex.imageUrl });
+            }
           } else {
-            const id = await db.exercises.add({ name: ex.name, muscle_groups: ex.muscle_groups });
+            const id = await db.exercises.add({ name: ex.name, muscle_groups: ex.muscle_groups, imageUrl: ex.imageUrl });
             exerciseIdMap[ex.name] = Number(id);
           }
         }
@@ -229,11 +238,48 @@ export const initDatabase = async (): Promise<void> => {
         }
         // Restore standard Workout A and Workout B routines if initial seed
         await restoreOriginalWorkouts();
+      } else {
+        // Backfill missing images for canonical exercises in existing databases
+        const aliasMapping: Record<string, string[]> = {
+          'Flat Dumbbell Bench Press': ['flat bench db press', 'flat dumbbell bench press', 'dumbbell bench press'],
+          'DB Lateral Raises': ['lateral raises (db)', 'db lateral raises', 'lateral raises', 'dumbbell lateral raises'],
+          'DB Bicep Curls': ['bicep curls (db)', 'db bicep curls', 'bicep curls', 'dumbbell bicep curls'],
+          'Hack Squats': ['hack squats', 'hack squat'],
+          'Lat Pulldowns': ['lat pulldowns', 'lat pulldown'],
+          'Seated Leg Curls': ['seated leg curls', 'seated leg curl', 'leg curls'],
+          'EZ-Bar Romanian Deadlifts': ['ez-bar romanian deadlifts', 'romanian deadlifts', 'rdl', 'ez bar romanian deadlifts'],
+          'Incline Bench Press': ['incline bench press', 'incline barbell bench press', 'incline db bench press'],
+          'Seated Cable Rows': ['seated cable rows', 'seated cable row', 'cable rows'],
+          'Leg Press': ['leg press'],
+          'Triceps Rope Pushdowns': ['triceps rope pushdowns', 'tricep rope pushdowns', 'triceps pushdowns'],
+          'Standing Calf Raises': ['standing calf raises', 'standing calf raise', 'calf raises'],
+        };
+
+        for (const ex of INITIAL_EXERCISES) {
+          let existing = await db.exercises.where('name').equalsIgnoreCase(ex.name).first();
+          if (!existing) {
+            const aliases = aliasMapping[ex.name] || [];
+            for (const alias of aliases) {
+              const match = await db.exercises.where('name').equalsIgnoreCase(alias).first();
+              if (match) {
+                existing = match;
+                break;
+              }
+            }
+          }
+
+          if (existing && existing.id && !existing.imageUrl && ex.imageUrl) {
+            await db.exercises.update(existing.id, { imageUrl: ex.imageUrl });
+          }
+        }
       }
     });
 
     // Seed dummy progressive overload workouts if not already seeded
     await seedDummyWorkouts();
+
+    // Seed 1-year historical body metrics progression (90kg / 30% fat fluctuations, 78kg-92kg range)
+    await seedDummyBodyMetrics();
 
     // Data healing migration: if Workout A was linked to Hack Squats with 0 sets but Leg Press has history sets, link Leg Press by ID
     try {
@@ -298,7 +344,11 @@ export const restoreOriginalWorkouts = async (): Promise<void> => {
           if (aliasedMatch) {
             existing = aliasedMatch;
             if (aliasedMatch.id) {
-              await db.exercises.update(aliasedMatch.id, { name: ex.name, muscle_groups: ex.muscle_groups });
+              await db.exercises.update(aliasedMatch.id, {
+                name: ex.name,
+                muscle_groups: ex.muscle_groups,
+                imageUrl: aliasedMatch.imageUrl || ex.imageUrl,
+              });
             }
             break;
           }
@@ -306,10 +356,13 @@ export const restoreOriginalWorkouts = async (): Promise<void> => {
       }
 
       if (!existing) {
-        const newId = await db.exercises.add({ name: ex.name, muscle_groups: ex.muscle_groups });
+        const newId = await db.exercises.add({ name: ex.name, muscle_groups: ex.muscle_groups, imageUrl: ex.imageUrl });
         exerciseIdMap[ex.name] = Number(newId);
       } else if (existing.id) {
         exerciseIdMap[ex.name] = existing.id;
+        if (!existing.imageUrl && ex.imageUrl) {
+          await db.exercises.update(existing.id, { imageUrl: ex.imageUrl });
+        }
       }
     }
 
@@ -776,12 +829,14 @@ export const fetchRoutineSessionRecords = async (
  * and restores default canonical Workout A and Workout B routines.
  */
 export const clearAllDataAndReset = async (): Promise<void> => {
-  await db.transaction('rw', db.exercises, db.workouts, db.workout_exercises, db.sessions, db.session_sets, async () => {
+  await db.transaction('rw', [db.exercises, db.workouts, db.workout_exercises, db.sessions, db.session_sets, db.user_profile, db.body_metrics], async () => {
     await db.session_sets.clear();
     await db.sessions.clear();
     await db.workout_exercises.clear();
     await db.workouts.clear();
     await db.exercises.clear();
+    await db.user_profile.clear();
+    await db.body_metrics.clear();
   });
 
   if (typeof window !== 'undefined') {
@@ -792,5 +847,67 @@ export const clearAllDataAndReset = async (): Promise<void> => {
 
   // Re-seed initial canonical Workout A and Workout B routines
   await restoreOriginalWorkouts();
+};
+
+/**
+ * Retrieves user profile record.
+ */
+export const getUserProfile = async (): Promise<UserProfile | null> => {
+  const profile = await db.user_profile.toCollection().first();
+  return profile || null;
+};
+
+/**
+ * Saves or updates user profile.
+ */
+export const saveUserProfile = async (profileData: Partial<UserProfile>): Promise<void> => {
+  const existing = await db.user_profile.toCollection().first();
+  if (existing && existing.id) {
+    await db.user_profile.update(existing.id, profileData);
+  } else {
+    await db.user_profile.add({
+      name: profileData.name || '',
+      dob: profileData.dob || '',
+      gender: profileData.gender || 'unspecified',
+      heightCm: profileData.heightCm || 175,
+      heightUnit: profileData.heightUnit || 'cm',
+    });
+  }
+};
+
+/**
+ * Retrieves all body metric logs sorted chronologically (oldest to newest).
+ */
+export const getBodyMetrics = async (): Promise<BodyMetricLog[]> => {
+  const logs = await db.body_metrics.toArray();
+  return logs.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+};
+
+/**
+ * Adds a new body metric log entry.
+ */
+export const addBodyMetric = async (metric: Omit<BodyMetricLog, 'id'>): Promise<number> => {
+  const id = await db.body_metrics.add({
+    date: metric.date || new Date().toISOString(),
+    weight: metric.weight,
+    unit: metric.unit,
+    bodyFatPercentage: metric.bodyFatPercentage != null ? metric.bodyFatPercentage : null,
+    notes: metric.notes || null,
+  });
+  return Number(id);
+};
+
+/**
+ * Updates an existing body metric log entry.
+ */
+export const updateBodyMetric = async (id: number, metric: Partial<BodyMetricLog>): Promise<void> => {
+  await db.body_metrics.update(id, metric);
+};
+
+/**
+ * Deletes a body metric log entry by ID.
+ */
+export const deleteBodyMetric = async (id: number): Promise<void> => {
+  await db.body_metrics.delete(id);
 };
 

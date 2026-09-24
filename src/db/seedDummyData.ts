@@ -835,3 +835,62 @@ export async function seedDummyWorkouts(): Promise<number> {
 
   return newlySeededCount;
 }
+
+export const DUMMY_BODY_METRICS: Array<{
+  date: string;
+  weight: number;
+  unit: WeightUnit;
+  bodyFatPercentage: number;
+  notes?: string;
+}> = [
+  { date: '2025-09-28', weight: 91.8, unit: 'kg', bodyFatPercentage: 29.8, notes: 'Baseline check-in' },
+  { date: '2025-10-12', weight: 90.6, unit: 'kg', bodyFatPercentage: 29.4 },
+  { date: '2025-10-26', weight: 89.4, unit: 'kg', bodyFatPercentage: 29.0 },
+  { date: '2025-11-09', weight: 88.1, unit: 'kg', bodyFatPercentage: 28.5 },
+  { date: '2025-11-23', weight: 86.9, unit: 'kg', bodyFatPercentage: 28.1, notes: 'Cut phase progressing' },
+  { date: '2025-12-07', weight: 85.6, unit: 'kg', bodyFatPercentage: 27.6 },
+  { date: '2025-12-21', weight: 84.3, unit: 'kg', bodyFatPercentage: 27.2 },
+  { date: '2026-01-04', weight: 83.0, unit: 'kg', bodyFatPercentage: 26.8, notes: 'Post-holidays check' },
+  { date: '2026-01-18', weight: 81.6, unit: 'kg', bodyFatPercentage: 26.3 },
+  { date: '2026-02-01', weight: 80.3, unit: 'kg', bodyFatPercentage: 25.8 },
+  { date: '2026-02-15', weight: 79.1, unit: 'kg', bodyFatPercentage: 25.3 },
+  { date: '2026-03-01', weight: 78.2, unit: 'kg', bodyFatPercentage: 24.9, notes: 'Lowest weight reached' },
+  { date: '2026-03-15', weight: 78.7, unit: 'kg', bodyFatPercentage: 25.1 },
+  { date: '2026-03-29', weight: 79.8, unit: 'kg', bodyFatPercentage: 25.5, notes: 'Lean bulk / strength focus' },
+  { date: '2026-04-12', weight: 81.0, unit: 'kg', bodyFatPercentage: 26.0 },
+  { date: '2026-04-26', weight: 82.4, unit: 'kg', bodyFatPercentage: 26.5 },
+  { date: '2026-05-10', weight: 83.8, unit: 'kg', bodyFatPercentage: 27.0 },
+  { date: '2026-05-24', weight: 85.1, unit: 'kg', bodyFatPercentage: 27.5, notes: 'Gym PRs increasing' },
+  { date: '2026-06-07', weight: 86.4, unit: 'kg', bodyFatPercentage: 28.0 },
+  { date: '2026-06-21', weight: 87.7, unit: 'kg', bodyFatPercentage: 28.4 },
+  { date: '2026-07-05', weight: 88.9, unit: 'kg', bodyFatPercentage: 28.8 },
+  { date: '2026-07-19', weight: 90.1, unit: 'kg', bodyFatPercentage: 29.2 },
+  { date: '2026-08-02', weight: 91.0, unit: 'kg', bodyFatPercentage: 29.6 },
+  { date: '2026-08-16', weight: 91.8, unit: 'kg', bodyFatPercentage: 29.9 },
+  { date: '2026-08-30', weight: 92.2, unit: 'kg', bodyFatPercentage: 30.2, notes: 'Peak bulk check' },
+  { date: '2026-09-10', weight: 91.0, unit: 'kg', bodyFatPercentage: 29.7 },
+  { date: '2026-09-20', weight: 90.2, unit: 'kg', bodyFatPercentage: 29.4, notes: 'Current check-in' },
+];
+
+export async function seedDummyBodyMetrics(): Promise<number> {
+  let seeded = 0;
+  for (const item of DUMMY_BODY_METRICS) {
+    const dateStr = item.date;
+    const existing = await db.body_metrics
+      .filter((m) => m.date.startsWith(dateStr))
+      .first();
+
+    if (!existing) {
+      await db.body_metrics.add({
+        date: `${dateStr}T08:00:00.000Z`,
+        weight: item.weight,
+        unit: item.unit,
+        bodyFatPercentage: item.bodyFatPercentage,
+        notes: item.notes || null,
+      });
+      seeded++;
+    }
+  }
+  return seeded;
+}
+

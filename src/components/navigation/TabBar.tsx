@@ -1,9 +1,9 @@
 import React from 'react';
-import { Dumbbell, Library, History } from 'lucide-react';
+import { Dumbbell, Library, History, User } from 'lucide-react';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { t } from '../../utils/i18n';
 
-export type TabType = 'workouts' | 'exercises' | 'history';
+export type TabType = 'workouts' | 'exercises' | 'history' | 'profile';
 
 interface TabBarProps {
   activeTab: TabType;
@@ -61,6 +61,15 @@ export const TabBar: React.FC<TabBarProps> = ({
       >
         <History size={20} />
         <span>{t('history', language)}</span>
+      </button>
+
+      <button
+        type="button"
+        className={`nav-tab-btn ${activeTab === 'profile' ? 'active' : ''}`}
+        onClick={() => onSelectTab('profile')}
+      >
+        <User size={20} />
+        <span>{t('profile', language)}</span>
       </button>
     </nav>
   );

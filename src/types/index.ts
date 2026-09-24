@@ -41,3 +41,24 @@ export interface WorkoutExercise {
   workout_id: number;
   exercise_id: number;
 }
+
+export type Gender = 'male' | 'female' | 'other' | 'unspecified';
+export type HeightUnit = 'cm' | 'ft_in';
+
+export interface UserProfile {
+  id?: number;
+  name?: string;
+  dob?: string; // YYYY-MM-DD
+  gender?: Gender;
+  heightCm?: number; // stored internally in cm
+  heightUnit?: HeightUnit;
+}
+
+export interface BodyMetricLog {
+  id?: number;
+  date: string; // ISO string (e.g. 2026-09-23T12:00:00.000Z or YYYY-MM-DD)
+  weight: number;
+  unit: WeightUnit;
+  bodyFatPercentage?: number | null;
+  notes?: string | null;
+}

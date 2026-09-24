@@ -6,6 +6,7 @@ import { TabBar, TabType } from './components/navigation/TabBar';
 import { WorkoutsScreen } from './screens/WorkoutsScreen';
 import { ExercisesScreen } from './screens/ExercisesScreen';
 import { HistoryScreen } from './screens/HistoryScreen';
+import { ProfileScreen } from './screens/ProfileScreen';
 import { ActiveSessionScreen } from './screens/ActiveSessionScreen';
 import { SettingsModal } from './components/organisms/SettingsModal';
 import { Typography } from './components/atoms/Typography';
@@ -203,8 +204,10 @@ export default function App() {
           />
         ) : activeTab === 'exercises' ? (
           <ExercisesScreen />
-        ) : (
+        ) : activeTab === 'history' ? (
           <HistoryScreen />
+        ) : (
+          <ProfileScreen />
         )}
       </main>
 
