@@ -156,6 +156,14 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
     };
   }, [dataPoints]);
 
+  // Derive exercise type for the selected exercise (used in labels and mode tabs)
+  const selectedExerciseMeta = useMemo(
+    () => getAvailableExercises(records).find((ex) => ex.id === selectedExercise),
+    [records, selectedExercise]
+  );
+  const isTimeBasedExercise = selectedExerciseMeta?.exerciseType === 'time_based';
+  const activeExerciseName = selectedExerciseMeta?.name || 'Selected Exercise';
+
   // Render SVG Line Graph (shared between compact card and zoomed modal)
   const renderSvgChart = (zoomed: boolean) => {
     const chartWidth = zoomed ? 960 : 600;
@@ -276,7 +284,7 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
               border: '1px solid rgba(255, 255, 255, 0.08)',
             }}
           >
-            {getModeYAxisLabel(activeMode, unit)}
+            {getModeYAxisLabel(activeMode, unit, isTimeBasedExercise ? 'time_based' : 'weight_reps')}
           </span>
         </div>
 
@@ -461,10 +469,6 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
       </div>
     );
   };
-
-    const selectedExerciseMeta = availableExercises.find((ex) => ex.id === selectedExercise);
-    const isTimeBasedExercise = selectedExerciseMeta?.exerciseType === 'time_based';
-    const activeExerciseName = selectedExerciseMeta?.name || 'Selected Exercise';
 
     return (
       <Card
