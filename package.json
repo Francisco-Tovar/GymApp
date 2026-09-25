@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist",
     "preview": "vite preview",
     "test": "tsx src/utils/progressiveOverload.test.ts && tsx src/utils/routineProgression.test.ts && tsx src/utils/settings.test.ts && tsx src/utils/idTracking.test.ts && tsx src/utils/imageUtils.test.ts && tsx src/utils/vitals.test.ts"
   },
@@ -21,6 +23,7 @@
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
+    "gh-pages": "^6.3.0",
     "tsx": "^4.23.15",
     "typescript": "^5.5.3",
     "vite": "^5.4.2",
