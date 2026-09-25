@@ -470,6 +470,7 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
                   padding: '8px 12px',
                   borderRadius: 'var(--radius-sm)',
                   border: '1px solid rgba(16, 185, 129, 0.2)',
+                  minWidth: '130px',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '4px', marginBottom: '2px' }}>
@@ -483,9 +484,9 @@ export const RoutineProgressionChart: React.FC<RoutineProgressionChartProps> = (
                   style={{
                     fontWeight: 800,
                     fontSize: '13px',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
+                    lineHeight: 1.3,
+                    wordBreak: 'break-word',
+                    overflowWrap: 'break-word',
                   }}
                 >
                   {topGainer.name} ({topGainer.growthPercent > 0 ? `+${topGainer.growthPercent}%` : `${topGainer.growthPercent}%`})
