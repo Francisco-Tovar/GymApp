@@ -873,24 +873,8 @@ export const DUMMY_BODY_METRICS: Array<{
 ];
 
 export async function seedDummyBodyMetrics(): Promise<number> {
-  let seeded = 0;
-  for (const item of DUMMY_BODY_METRICS) {
-    const dateStr = item.date;
-    const existing = await db.body_metrics
-      .filter((m) => m.date.startsWith(dateStr))
-      .first();
-
-    if (!existing) {
-      await db.body_metrics.add({
-        date: `${dateStr}T08:00:00.000Z`,
-        weight: item.weight,
-        unit: item.unit,
-        bodyFatPercentage: item.bodyFatPercentage,
-        notes: item.notes || null,
-      });
-      seeded++;
-    }
-  }
-  return seeded;
+  // Dummy body metrics seeding disabled by default so users start with a clean slate
+  return 0;
 }
+
 

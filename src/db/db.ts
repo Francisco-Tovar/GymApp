@@ -278,8 +278,29 @@ export const initDatabase = async (): Promise<void> => {
     // Seed dummy progressive overload workouts if not already seeded
     await seedDummyWorkouts();
 
-    // Seed 1-year historical body metrics progression (90kg / 30% fat fluctuations, 78kg-92kg range)
-    await seedDummyBodyMetrics();
+    // Auto-cleanup seeded dummy body metrics once so existing browser databases start empty
+    try {
+      const DUMMY_CLEANUP_KEY = 'gymapp_dummy_metrics_cleared_v1';
+      if (typeof window !== 'undefined' && localStorage.getItem(DUMMY_CLEANUP_KEY) !== 'true') {
+        const dummyDates = [
+          '2025-09-28', '2025-10-12', '2025-10-26', '2025-11-09', '2025-11-23',
+          '2025-12-07', '2025-12-21', '2026-01-04', '2026-01-18', '2026-02-01',
+          '2026-02-15', '2026-03-01', '2026-03-15', '2026-03-29', '2026-04-12',
+          '2026-04-26', '2026-05-10', '2026-05-24', '2026-06-07', '2026-06-21',
+          '2026-07-05', '2026-07-19', '2026-08-02', '2026-08-16', '2026-08-30',
+          '2026-09-10', '2026-09-20'
+        ];
+        for (const d of dummyDates) {
+          const matched = await db.body_metrics.filter((m) => m.date.startsWith(d)).toArray();
+          for (const m of matched) {
+            if (m.id) await db.body_metrics.delete(m.id);
+          }
+        }
+        localStorage.setItem(DUMMY_CLEANUP_KEY, 'true');
+      }
+    } catch (cleanErr) {
+      console.warn('Dummy metrics cleanup:', cleanErr);
+    }
 
     // Data healing migration: if Workout A was linked to Hack Squats with 0 sets but Leg Press has history sets, link Leg Press by ID
     try {
