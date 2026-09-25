@@ -462,181 +462,182 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
     );
   };
 
-  const activeExerciseName =
-    availableExercises.find((ex) => ex.id === selectedExercise)?.name || 'Selected Exercise';
+    const selectedExerciseMeta = availableExercises.find((ex) => ex.id === selectedExercise);
+    const isTimeBasedExercise = selectedExerciseMeta?.exerciseType === 'time_based';
+    const activeExerciseName = selectedExerciseMeta?.name || 'Selected Exercise';
 
-  return (
-    <Card
-      className="glass-card animate-fade-in"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '16px',
-        padding: '20px',
-        ...style,
-      }}
-    >
-      {/* Top Header & Exercise Selector */}
-      <div
+    return (
+      <Card
+        className="glass-card animate-fade-in"
         style={{
           display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '12px',
+          flexDirection: 'column',
+          gap: '16px',
+          padding: '20px',
+          ...style,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          {onClose ? (
-            <button
-              type="button"
-              onClick={onClose}
-              title="Go back"
-              aria-label="Go back"
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                border: '1px solid var(--border-color)',
-                backgroundColor: 'var(--bg-main)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--text-primary)',
-                cursor: 'pointer',
-                transition: 'all 0.2s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
-                e.currentTarget.style.borderColor = 'var(--text-muted)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'var(--bg-main)';
-                e.currentTarget.style.borderColor = 'var(--border-color)';
-              }}
-            >
-              <ArrowLeft size={18} />
-            </button>
-          ) : (
-            <div
-              style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '8px',
-                backgroundColor: 'var(--primary-subtle)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'var(--primary)',
-              }}
-            >
-              <TrendingUp size={18} />
+        {/* Top Header & Exercise Selector */}
+        <div
+          style={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: '12px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            {onClose ? (
+              <button
+                type="button"
+                onClick={onClose}
+                title="Go back"
+                aria-label="Go back"
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '50%',
+                  border: '1px solid var(--border-color)',
+                  backgroundColor: 'var(--bg-main)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--text-primary)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)';
+                  e.currentTarget.style.borderColor = 'var(--text-muted)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--bg-main)';
+                  e.currentTarget.style.borderColor = 'var(--border-color)';
+                }}
+              >
+                <ArrowLeft size={18} />
+              </button>
+            ) : (
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--primary-subtle)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: 'var(--primary)',
+                }}
+              >
+                <TrendingUp size={18} />
+              </div>
+            )}
+            <div>
+              <Typography variant="h3" style={{ fontSize: '17px', lineHeight: 1.2 }}>
+                {displayTitle}
+              </Typography>
+              <Typography variant="caption" color="var(--text-muted)">
+                {getModeYAxisLabel(activeMode, unit, isTimeBasedExercise ? 'time_based' : 'weight_reps')}
+              </Typography>
             </div>
-          )}
-          <div>
-            <Typography variant="h3" style={{ fontSize: '17px', lineHeight: 1.2 }}>
-              {displayTitle}
-            </Typography>
-            <Typography variant="caption" color="var(--text-muted)">
-              {getModeYAxisLabel(activeMode, unit)}
-            </Typography>
+          </div>
+
+          {/* Exercise Combobox Selector */}
+          <div style={{ position: 'relative', minWidth: '180px', flex: '1 1 auto', maxWidth: '280px' }}>
+            <Combobox
+              options={availableExercises.map((ex) => ({
+                value: ex.id,
+                label: `${ex.exerciseType === 'time_based' ? '⏱️ ' : ''}${ex.name}`,
+                subLabel: `${ex.sessionCount} ${language === 'es' ? 'sesiones' : 'sessions'}`,
+              }))}
+              value={selectedExercise}
+              onChange={(val) => setSelectedExercise(val)}
+              placeholder={language === 'es' ? 'Selecciona un ejercicio...' : 'Select an exercise...'}
+              disabled={availableExercises.length === 0}
+              size="md"
+            />
           </div>
         </div>
 
-        {/* Exercise Combobox Selector */}
-        <div style={{ position: 'relative', minWidth: '180px', flex: '1 1 auto', maxWidth: '280px' }}>
-          <Combobox
-            options={availableExercises.map((ex) => ({
-              value: ex.id,
-              label: ex.name,
-              subLabel: `${ex.sessionCount} ${language === 'es' ? 'sesiones' : 'sessions'}`,
-            }))}
-            value={selectedExercise}
-            onChange={(val) => setSelectedExercise(val)}
-            placeholder={language === 'es' ? 'Selecciona un ejercicio...' : 'Select an exercise...'}
-            disabled={availableExercises.length === 0}
-            size="md"
-          />
+        {/* 3-State Mode Toggle Segmented Control */}
+        <div
+          role="tablist"
+          aria-label="Progressive Overload Calculation Modes"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            backgroundColor: 'var(--bg-main)',
+            padding: '4px',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border-color)',
+            gap: '4px',
+          }}
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeMode === 'e1rm'}
+            onClick={() => setActiveMode('e1rm')}
+            style={{
+              padding: '8px 10px',
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+              backgroundColor: activeMode === 'e1rm' ? 'var(--primary)' : 'transparent',
+              color: activeMode === 'e1rm' ? '#ffffff' : 'var(--text-muted)',
+              boxShadow: activeMode === 'e1rm' ? '0 2px 8px var(--primary-glow)' : 'none',
+            }}
+          >
+            {isTimeBasedExercise ? (language === 'es' ? 'Hold Máximo' : 'Max Hold') : t('estimated_1rm', language)}
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeMode === 'topSet'}
+            onClick={() => setActiveMode('topSet')}
+            style={{
+              padding: '8px 10px',
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+              backgroundColor: activeMode === 'topSet' ? 'var(--primary)' : 'transparent',
+              color: activeMode === 'topSet' ? '#ffffff' : 'var(--text-muted)',
+              boxShadow: activeMode === 'topSet' ? '0 2px 8px var(--primary-glow)' : 'none',
+            }}
+          >
+            {isTimeBasedExercise ? (language === 'es' ? 'Mayor Serie' : 'Peak Set') : t('top_set_load', language)}
+          </button>
+
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeMode === 'volume'}
+            onClick={() => setActiveMode('volume')}
+            style={{
+              padding: '8px 10px',
+              borderRadius: 'var(--radius-sm)',
+              border: 'none',
+              fontSize: '12px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+              backgroundColor: activeMode === 'volume' ? 'var(--primary)' : 'transparent',
+              color: activeMode === 'volume' ? '#ffffff' : 'var(--text-muted)',
+              boxShadow: activeMode === 'volume' ? '0 2px 8px var(--primary-glow)' : 'none',
+            }}
+          >
+            {isTimeBasedExercise ? (language === 'es' ? 'Tiempo Total' : 'Total Time') : t('total_volume', language)}
+          </button>
         </div>
-      </div>
-
-      {/* 3-State Mode Toggle Segmented Control */}
-      <div
-        role="tablist"
-        aria-label="Progressive Overload Calculation Modes"
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          backgroundColor: 'var(--bg-main)',
-          padding: '4px',
-          borderRadius: 'var(--radius-md)',
-          border: '1px solid var(--border-color)',
-          gap: '4px',
-        }}
-      >
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeMode === 'e1rm'}
-          onClick={() => setActiveMode('e1rm')}
-          style={{
-            padding: '8px 10px',
-            borderRadius: 'var(--radius-sm)',
-            border: 'none',
-            fontSize: '12px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            backgroundColor: activeMode === 'e1rm' ? 'var(--primary)' : 'transparent',
-            color: activeMode === 'e1rm' ? '#ffffff' : 'var(--text-muted)',
-            boxShadow: activeMode === 'e1rm' ? '0 2px 8px var(--primary-glow)' : 'none',
-          }}
-        >
-          {t('estimated_1rm', language)}
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeMode === 'topSet'}
-          onClick={() => setActiveMode('topSet')}
-          style={{
-            padding: '8px 10px',
-            borderRadius: 'var(--radius-sm)',
-            border: 'none',
-            fontSize: '12px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            backgroundColor: activeMode === 'topSet' ? 'var(--primary)' : 'transparent',
-            color: activeMode === 'topSet' ? '#ffffff' : 'var(--text-muted)',
-            boxShadow: activeMode === 'topSet' ? '0 2px 8px var(--primary-glow)' : 'none',
-          }}
-        >
-          {t('top_set_load', language)}
-        </button>
-
-        <button
-          type="button"
-          role="tab"
-          aria-selected={activeMode === 'volume'}
-          onClick={() => setActiveMode('volume')}
-          style={{
-            padding: '8px 10px',
-            borderRadius: 'var(--radius-sm)',
-            border: 'none',
-            fontSize: '12px',
-            fontWeight: 700,
-            cursor: 'pointer',
-            transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-            backgroundColor: activeMode === 'volume' ? 'var(--primary)' : 'transparent',
-            color: activeMode === 'volume' ? '#ffffff' : 'var(--text-muted)',
-            boxShadow: activeMode === 'volume' ? '0 2px 8px var(--primary-glow)' : 'none',
-          }}
-        >
-          {t('total_volume', language)}
-        </button>
-      </div>
 
       {/* Time Range Interval Selector */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
@@ -736,7 +737,9 @@ export const ProgressiveOverloadChart: React.FC<ProgressiveOverloadChartProps> =
               }}
             >
               <Award size={14} />
-              {stats.best.toLocaleString()} {unit}
+              {isTimeBasedExercise
+                ? `${stats.best} min`
+                : `${stats.best.toLocaleString()} ${unit}`}
             </div>
           </div>
 

@@ -11,6 +11,7 @@ export interface RoutineExerciseInput {
   ExerciseId?: string | number;
   exerciseName?: string;
   ExerciseName?: string;
+  exerciseType?: 'weight_reps' | 'time_based';
   sets?: Array<{
     weight?: number;
     Weight?: number;
@@ -19,6 +20,10 @@ export interface RoutineExerciseInput {
     setNumber?: number;
     SetNumber?: number;
     set_number?: number;
+    exerciseType?: 'weight_reps' | 'time_based';
+    durationSeconds?: number;
+    duration_seconds?: number;
+    notes?: string | null;
   }>;
   Sets?: Array<{
     weight?: number;
@@ -28,6 +33,10 @@ export interface RoutineExerciseInput {
     setNumber?: number;
     SetNumber?: number;
     set_number?: number;
+    exerciseType?: 'weight_reps' | 'time_based';
+    durationSeconds?: number;
+    duration_seconds?: number;
+    notes?: string | null;
   }>;
 }
 
@@ -44,11 +53,15 @@ export interface NormalizedRoutineSet {
   weight: number;
   reps: number;
   setNumber: number;
+  exerciseType: 'weight_reps' | 'time_based';
+  durationSeconds: number;
+  notes?: string | null;
 }
 
 export interface NormalizedRoutineExerciseSession {
   exerciseId: string;
   exerciseName: string;
+  exerciseType: 'weight_reps' | 'time_based';
   sets: NormalizedRoutineSet[];
   e1rm: number;
   topSetWeight: number;
@@ -181,7 +194,23 @@ export function calculateSessionVolume(sets: NormalizedRoutineSet[]): number {
  */
 export function formatSetsBreakdown(sets: NormalizedRoutineSet[], unit: string = 'lbs'): string {
   if (!sets || sets.length === 0) return 'No completed sets';
-  return sets.map((s) => `Set ${s.setNumber}: ${s.weight} ${unit} × ${s.reps} reps`).join(' | ');
+  return sets
+    .map((s) => {
+      if (s.exerciseType === 'time_based' || s.durationSeconds > 0) {
+        const mins = Math.floor(s.durationSeconds / 60);
+        const secs = s.durationSeconds % 60;
+        let timeStr = '';
+        if (mins > 0 && secs > 0) timeStr = `${mins}m ${secs}s`;
+        else if (mins > 0) timeStr = `${mins} min`;
+        else timeStr = `${secs}s`;
+
+        const noteStr = s.notes && s.notes.trim() ? ` (${s.notes.trim()})` : '';
+        return `Set ${s.setNumber}: ${timeStr}${noteStr}`;
+      }
+      const noteStr = s.notes && s.notes.trim() ? ` (${s.notes.trim()})` : '';
+      return `Set ${s.setNumber}: ${s.weight} ${unit} × ${s.reps} reps${noteStr}`;
+    })
+    .join(' | ');
 }
 
 /**
@@ -208,29 +237,43 @@ export function normalizeRoutineSessions(records: RoutineSessionRecord[]): Norma
       const exerciseId = String(idRaw).trim();
 
       const rawSets = ex.sets ?? ex.Sets ?? [];
+      const isTimeBased =
+        ex.exerciseType === 'time_based' ||
+        rawSets.some((s) => (s.durationSeconds || s.duration_seconds || 0) > 0 || s.exerciseType === 'time_based');
+
       const sets: NormalizedRoutineSet[] = rawSets.map((s, sIdx) => {
         const weight = Number(s.weight ?? s.Weight ?? 0);
         const reps = Number(s.reps ?? s.Reps ?? 0);
         const setNumber = Number(s.setNumber ?? s.SetNumber ?? s.set_number ?? sIdx + 1);
+        const durationSeconds = Number(s.durationSeconds ?? s.duration_seconds ?? 0);
+        const setType = s.exerciseType || (durationSeconds > 0 ? 'time_based' : isTimeBased ? 'time_based' : 'weight_reps');
 
         return {
           weight: isNaN(weight) || weight < 0 ? 0 : weight,
           reps: isNaN(reps) || reps < 0 ? 0 : Math.floor(reps),
           setNumber,
+          exerciseType: setType,
+          durationSeconds: isNaN(durationSeconds) || durationSeconds < 0 ? 0 : durationSeconds,
+          notes: s.notes || null,
         };
       });
 
-      const e1rm = calculateSessionE1RM(sets);
+      const e1rm = isTimeBased
+        ? Math.round((Math.max(...sets.map((s) => s.durationSeconds), 0) / 60) * 10) / 10
+        : calculateSessionE1RM(sets);
       const topSet = calculateSessionTopSet(sets);
-      const volume = calculateSessionVolume(sets);
+      const volume = isTimeBased
+        ? Math.round((sets.reduce((sum, s) => sum + s.durationSeconds, 0) / 60) * 10) / 10
+        : calculateSessionVolume(sets);
 
       exerciseMap.set(exerciseKey.toLowerCase(), {
         exerciseId,
         exerciseName: exerciseKey,
+        exerciseType: isTimeBased ? 'time_based' : 'weight_reps',
         sets,
         e1rm,
-        topSetWeight: topSet.weight,
-        topSetReps: topSet.reps,
+        topSetWeight: isTimeBased ? e1rm : topSet.weight,
+        topSetReps: isTimeBased ? 0 : topSet.reps,
         volume,
         breakdown: formatSetsBreakdown(sets),
       });
@@ -282,11 +325,11 @@ export function getRoutineModeLabel(mode: RoutineMetricMode, unit: string = 'lbs
     case 'relativeGrowth':
       return 'Relative Growth (%)';
     case 'e1rm':
-      return `Estimated 1RM (${unit})`;
+      return `Estimated 1RM (${unit}) / Max Hold (min)`;
     case 'topSet':
-      return `Top Set Weight (${unit})`;
+      return `Top Set Weight (${unit}) / Duration (min)`;
     case 'volume':
-      return `Total Volume (${unit})`;
+      return `Total Volume (${unit}) / Total Time (min)`;
   }
 }
 
@@ -305,7 +348,7 @@ export function processRoutineProgression(
     const key = meta.name.toLowerCase();
     const color = ROUTINE_PALETTE[colorIdx % ROUTINE_PALETTE.length];
 
-    // Find baseline E1RM: first chronological session where exercise was performed with e1rm > 0
+    // Find baseline: first chronological session where exercise was performed with e1rm > 0
     let baselineE1RM = 0;
     let firstDate: Date | undefined;
     let latestDate: Date | undefined;
@@ -342,40 +385,83 @@ export function processRoutineProgression(
         };
       }
 
+      const isTimeBased = exData.exerciseType === 'time_based';
       let value: number = 0;
       let displayValue = '';
       let subValue: string | undefined = undefined;
 
-      switch (mode) {
-        case 'relativeGrowth': {
-          if (baselineE1RM > 0) {
-            value = Math.round((exData.e1rm / baselineE1RM) * 1000) / 10;
-          } else {
-            value = 100;
+      const formatMinSec = (sec: number) => {
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        if (m > 0 && s > 0) return `${m}m ${s}s`;
+        if (m > 0) return `${m} min`;
+        return `${s}s`;
+      };
+
+      if (isTimeBased) {
+        const durations = exData.sets.map((s) => s.durationSeconds);
+        const maxSecs = durations.length > 0 ? Math.max(...durations) : 0;
+        const totalSecs = durations.reduce((sum, d) => sum + d, 0);
+
+        switch (mode) {
+          case 'relativeGrowth': {
+            if (baselineE1RM > 0) {
+              value = Math.round((exData.e1rm / baselineE1RM) * 1000) / 10;
+            } else {
+              value = 100;
+            }
+            const delta = Math.round((value - 100) * 10) / 10;
+            const deltaSign = delta > 0 ? `+${delta}%` : `${delta}%`;
+            displayValue = `${value}% (${deltaSign})`;
+            subValue = `Max Set: ${formatMinSec(maxSecs)} (Baseline: ${formatMinSec(Math.round(baselineE1RM * 60))})`;
+            break;
           }
-          const delta = Math.round((value - 100) * 10) / 10;
-          const deltaSign = delta > 0 ? `+${delta}%` : `${delta}%`;
-          displayValue = `${value}% (${deltaSign})`;
-          subValue = `1RM: ${exData.e1rm} ${unit} (Baseline: ${baselineE1RM} ${unit})`;
-          break;
+          case 'e1rm':
+          case 'topSet': {
+            value = Math.round((maxSecs / 60) * 10) / 10;
+            displayValue = formatMinSec(maxSecs);
+            subValue = 'Peak Hold / Duration';
+            break;
+          }
+          case 'volume': {
+            value = Math.round((totalSecs / 60) * 10) / 10;
+            displayValue = formatMinSec(totalSecs);
+            subValue = 'Total Duration';
+            break;
+          }
         }
-        case 'e1rm': {
-          value = exData.e1rm;
-          displayValue = `${value} ${unit}`;
-          subValue = 'Estimated Epley 1RM';
-          break;
-        }
-        case 'topSet': {
-          value = exData.topSetWeight;
-          displayValue = `${exData.topSetWeight} ${unit} × ${exData.topSetReps} reps`;
-          subValue = 'Heaviest Weight';
-          break;
-        }
-        case 'volume': {
-          value = exData.volume;
-          displayValue = `${value.toLocaleString()} ${unit}`;
-          subValue = 'Total Volume (Weight × Reps)';
-          break;
+      } else {
+        switch (mode) {
+          case 'relativeGrowth': {
+            if (baselineE1RM > 0) {
+              value = Math.round((exData.e1rm / baselineE1RM) * 1000) / 10;
+            } else {
+              value = 100;
+            }
+            const delta = Math.round((value - 100) * 10) / 10;
+            const deltaSign = delta > 0 ? `+${delta}%` : `${delta}%`;
+            displayValue = `${value}% (${deltaSign})`;
+            subValue = `1RM: ${exData.e1rm} ${unit} (Baseline: ${baselineE1RM} ${unit})`;
+            break;
+          }
+          case 'e1rm': {
+            value = exData.e1rm;
+            displayValue = `${value} ${unit}`;
+            subValue = 'Estimated Epley 1RM';
+            break;
+          }
+          case 'topSet': {
+            value = exData.topSetWeight;
+            displayValue = `${exData.topSetWeight} ${unit} × ${exData.topSetReps} reps`;
+            subValue = 'Heaviest Weight';
+            break;
+          }
+          case 'volume': {
+            value = exData.volume;
+            displayValue = `${value.toLocaleString()} ${unit}`;
+            subValue = 'Total Volume (Weight × Reps)';
+            break;
+          }
         }
       }
 

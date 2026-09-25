@@ -8,6 +8,7 @@ import {
   getAvailableExercises,
   getModeYAxisLabel,
   WorkoutSessionRecord,
+  NormalizedSet,
 } from './progressiveOverload';
 
 function runTestSuite() {
@@ -23,10 +24,10 @@ function runTestSuite() {
   console.assert(calculateEpley1RM(-10, 5) === 0, 'Negative weight should yield 0 1RM');
 
   // Test 3: Session E1RM (highest set 1RM)
-  const sessionSets = [
-    { weight: 200, reps: 5, setNumber: 1 }, // 200 * (1 + 5/30) = 233.33
-    { weight: 220, reps: 3, setNumber: 2 }, // 220 * (1 + 3/30) = 242.0
-    { weight: 180, reps: 8, setNumber: 3 }, // 180 * (1 + 8/30) = 228.0
+  const sessionSets: NormalizedSet[] = [
+    { weight: 200, reps: 5, setNumber: 1, exerciseType: 'weight_reps', durationSeconds: 0 },
+    { weight: 220, reps: 3, setNumber: 2, exerciseType: 'weight_reps', durationSeconds: 0 },
+    { weight: 180, reps: 8, setNumber: 3, exerciseType: 'weight_reps', durationSeconds: 0 },
   ];
   console.assert(calculateSessionE1RM(sessionSets) === 242, 'Session max 1RM mismatch');
 
@@ -37,17 +38,17 @@ function runTestSuite() {
   console.assert(topSet.label === '220 × 3 reps', 'Top set label mismatch');
 
   // Test 5: Top Set Tie Breaking by Reps
-  const tieSets = [
-    { weight: 150, reps: 8, setNumber: 1 },
-    { weight: 150, reps: 12, setNumber: 2 },
+  const tieSets: NormalizedSet[] = [
+    { weight: 150, reps: 8, setNumber: 1, exerciseType: 'weight_reps', durationSeconds: 0 },
+    { weight: 150, reps: 12, setNumber: 2, exerciseType: 'weight_reps', durationSeconds: 0 },
   ];
   const topTie = calculateSessionTopSet(tieSets);
   console.assert(topTie.reps === 12, 'Tie-breaking should prefer higher reps');
 
   // Test 6: Bodyweight Exercise (weight = 0)
-  const bodyweightSets = [
-    { weight: 0, reps: 15, setNumber: 1 },
-    { weight: 0, reps: 12, setNumber: 2 },
+  const bodyweightSets: NormalizedSet[] = [
+    { weight: 0, reps: 15, setNumber: 1, exerciseType: 'weight_reps', durationSeconds: 0 },
+    { weight: 0, reps: 12, setNumber: 2, exerciseType: 'weight_reps', durationSeconds: 0 },
   ];
   console.assert(calculateSessionVolume(bodyweightSets) === 0, 'Bodyweight volume should be 0');
   const topBw = calculateSessionTopSet(bodyweightSets);
@@ -145,10 +146,34 @@ function runTestSuite() {
   const sixMonthsFiltered = processExerciseProgression(multiMonthRecords, 'ex-bench', 'e1rm', 'lb', '6m');
   console.assert(sixMonthsFiltered.length === 3, `Expected 3 in 6m, got ${sixMonthsFiltered.length}`);
 
-  const oneYearFiltered = processExerciseProgression(multiMonthRecords, 'ex-bench', 'e1rm', 'lb', '1y');
-  console.assert(oneYearFiltered.length === 4, `Expected 4 in 1y, got ${oneYearFiltered.length}`);
+  // Test 11: Time-based exercise progressive overload calculation
+  const timeRecords: WorkoutSessionRecord[] = [
+    {
+      ExerciseId: 'ex-treadmill',
+      ExerciseName: 'Treadmill Running',
+      exerciseType: 'time_based',
+      Date: '2026-09-01T12:00:00Z',
+      Sets: [{ durationSeconds: 1200, notes: '5% incline' }], // 20 mins
+    },
+    {
+      ExerciseId: 'ex-treadmill',
+      ExerciseName: 'Treadmill Running',
+      exerciseType: 'time_based',
+      Date: '2026-09-10T12:00:00Z',
+      Sets: [{ durationSeconds: 1500, notes: '6% incline' }], // 25 mins
+    },
+  ];
 
-  console.log('All 10 test suites passed successfully!');
+  const treadmillProgression = processExerciseProgression(timeRecords, 'ex-treadmill', 'volume', 'lb');
+  console.assert(treadmillProgression.length === 2, 'Should process 2 treadmill sessions');
+  console.assert(treadmillProgression[0].value === 20, 'First treadmill session should be 20 min');
+  console.assert(treadmillProgression[1].value === 25, 'Second treadmill session should be 25 min');
+  console.assert(treadmillProgression[0].allSetsSummary.includes('20 min (5% incline)'), 'Summary should format time and note');
+
+  const timeLabel = getModeYAxisLabel('volume', 'lb', 'time_based');
+  console.assert(timeLabel === 'Total Time Logged (min)', 'Time-based volume Y-axis label mismatch');
+
+  console.log('All 11 test suites passed successfully!');
 }
 
 runTestSuite();

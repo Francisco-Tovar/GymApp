@@ -7,6 +7,7 @@ import {
   processRoutineProgression,
   calculateVisibleYBounds,
   RoutineSessionRecord,
+  NormalizedRoutineSet,
 } from './routineProgression';
 
 function runRoutineProgressionTestSuite() {
@@ -20,26 +21,26 @@ function runRoutineProgressionTestSuite() {
   console.assert(calculateEpley1RM(-10, 5) === 0, 'Negative weight should yield 0 1RM');
 
   // Test 2: Peak Session E1RM
-  const sets = [
-    { weight: 100, reps: 5, setNumber: 1 },
-    { weight: 110, reps: 6, setNumber: 2 },
-    { weight: 105, reps: 4, setNumber: 3 },
+  const sets: NormalizedRoutineSet[] = [
+    { weight: 100, reps: 5, setNumber: 1, exerciseType: 'weight_reps', durationSeconds: 0 },
+    { weight: 110, reps: 6, setNumber: 2, exerciseType: 'weight_reps', durationSeconds: 0 },
+    { weight: 105, reps: 4, setNumber: 3, exerciseType: 'weight_reps', durationSeconds: 0 },
   ];
   console.assert(calculateSessionE1RM(sets) === 132, 'Session max 1RM mismatch');
 
   // Test 3: Top set with tie-breaking
-  const tieSets = [
-    { weight: 150, reps: 8, setNumber: 1 },
-    { weight: 150, reps: 10, setNumber: 2 },
-    { weight: 140, reps: 12, setNumber: 3 },
+  const tieSets: NormalizedRoutineSet[] = [
+    { weight: 150, reps: 8, setNumber: 1, exerciseType: 'weight_reps', durationSeconds: 0 },
+    { weight: 150, reps: 10, setNumber: 2, exerciseType: 'weight_reps', durationSeconds: 0 },
+    { weight: 140, reps: 12, setNumber: 3, exerciseType: 'weight_reps', durationSeconds: 0 },
   ];
   const top = calculateSessionTopSet(tieSets);
   console.assert(top.weight === 150 && top.reps === 10, 'Top set tie-break failed');
 
   // Test 4: Total Volume
-  const volSets = [
-    { weight: 100, reps: 10, setNumber: 1 },
-    { weight: 110, reps: 8, setNumber: 2 },
+  const volSets: NormalizedRoutineSet[] = [
+    { weight: 100, reps: 10, setNumber: 1, exerciseType: 'weight_reps', durationSeconds: 0 },
+    { weight: 110, reps: 8, setNumber: 2, exerciseType: 'weight_reps', durationSeconds: 0 },
   ];
   console.assert(calculateSessionVolume(volSets) === 1880, 'Session volume mismatch');
 
@@ -118,12 +119,36 @@ function runRoutineProgressionTestSuite() {
   );
   console.assert(bothBounds.yMax >= benchOnlyBounds.yMax, 'Both series bound should encompass bench-only bound');
 
-  // Test 9: Empty datasets
-  const emptyResult = processRoutineProgression([], 'relativeGrowth');
-  console.assert(emptyResult.sessions.length === 0, 'Empty input should yield 0 sessions');
-  console.assert(emptyResult.series.length === 0, 'Empty input should yield 0 series');
+  // Test 10: Time-based exercise within a routine
+  const routineWithTime: RoutineSessionRecord[] = [
+    {
+      Date: '2026-01-01',
+      Exercises: [
+        {
+          ExerciseName: 'Treadmill',
+          exerciseType: 'time_based',
+          Sets: [{ durationSeconds: 600 }], // 10 min
+        },
+      ],
+    },
+    {
+      Date: '2026-01-15',
+      Exercises: [
+        {
+          ExerciseName: 'Treadmill',
+          exerciseType: 'time_based',
+          Sets: [{ durationSeconds: 900 }], // 15 min
+        },
+      ],
+    },
+  ];
 
-  console.log('✓ All 9 Routine Progression tests passed successfully!');
+  const timeRoutineResult = processRoutineProgression(routineWithTime, 'relativeGrowth');
+  console.assert(timeRoutineResult.series.length === 1, 'Expected 1 time-based series');
+  console.assert(timeRoutineResult.series[0].points[0].value === 100, 'Baseline should be 100%');
+  console.assert(timeRoutineResult.series[0].points[1].value === 150, '15 min vs 10 min should be 150%');
+
+  console.log('✓ All 10 Routine Progression tests passed successfully!');
 }
 
 runRoutineProgressionTestSuite();

@@ -35,6 +35,8 @@ const COMMON_MUSCLES = [
   'Glutes',
   'Calves',
   'Abs',
+  'Core',
+  'Cardio',
   'Lower Back',
 ];
 

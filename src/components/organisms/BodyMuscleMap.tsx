@@ -16,6 +16,19 @@ export const normalizeMuscle = (muscleStr: string): string[] => {
   const normalized = muscleStr.toLowerCase().trim();
   const keys: string[] = [];
 
+  if (
+    normalized.includes('cardio') ||
+    normalized.includes('heart') ||
+    normalized.includes('corazón') ||
+    normalized.includes('aerobic') ||
+    normalized.includes('cardiovascular') ||
+    normalized.includes('running') ||
+    normalized.includes('treadmill') ||
+    normalized.includes('caminadora')
+  ) {
+    keys.push('cardio');
+  }
+
   if (normalized.includes('chest') || normalized.includes('pectoral') || normalized.includes('pecho')) keys.push('chest');
   if (normalized.includes('shoulder') || normalized.includes('deltoid') || normalized.includes('delt') || normalized.includes('hombro')) keys.push('shoulders');
   if (normalized.includes('bicep') || normalized.includes('bícep')) keys.push('biceps');
@@ -232,6 +245,20 @@ export const BodyMuscleMap: React.FC<BodyMuscleMapProps> = ({
                   {/* Chest */}
                   <path d="M62 50 C68 49 76 50 78 52 L78 74 C72 78 60 76 56 70 C56 62 58 54 62 50 Z" fill={getFill('chest')} stroke={getStroke('chest')} strokeWidth="1.2" />
                   <path d="M98 50 C92 49 84 50 82 52 L82 74 C88 78 100 76 104 70 C104 62 102 54 98 50 Z" fill={getFill('chest')} stroke={getStroke('chest')} strokeWidth="1.2" />
+
+                  {/* Cardiovascular Heart (Center Left Chest) */}
+                  <g>
+                    <path
+                      d="M80 57 C78 52 72 52 70 56 C67 61 74 67 80 72 C86 67 93 61 90 56 C88 52 82 52 80 57 Z"
+                      fill={activeMuscleMap['cardio'] ? '#EF4444' : 'rgba(30, 41, 59, 0.7)'}
+                      stroke={activeMuscleMap['cardio'] ? '#FCA5A5' : '#475569'}
+                      strokeWidth={activeMuscleMap['cardio'] ? '1.5' : '1'}
+                      style={{
+                        filter: activeMuscleMap['cardio'] ? 'drop-shadow(0 0 4px #EF4444)' : 'none',
+                        transition: 'all 0.3s ease',
+                      }}
+                    />
+                  </g>
 
                   {/* Biceps */}
                   <path d="M42 70 C38 74 38 88 40 98 C44 98 48 94 50 86 C50 78 46 72 42 70 Z" fill={getFill('biceps')} stroke={getStroke('biceps')} strokeWidth="1.2" />

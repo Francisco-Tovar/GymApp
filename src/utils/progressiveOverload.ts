@@ -8,6 +8,10 @@ export interface WorkoutSetRecord {
   setNumber?: number;
   SetNumber?: number;
   set_number?: number;
+  exerciseType?: 'weight_reps' | 'time_based';
+  durationSeconds?: number;
+  duration_seconds?: number;
+  notes?: string | null;
 }
 
 export interface WorkoutSessionRecord {
@@ -17,6 +21,7 @@ export interface WorkoutSessionRecord {
   exerciseName?: string;
   ExerciseName?: string;
   exercise_name?: string;
+  exerciseType?: 'weight_reps' | 'time_based';
   date?: string | Date | number;
   Date?: string | Date | number;
   sets?: WorkoutSetRecord[];
@@ -45,11 +50,15 @@ export interface NormalizedSet {
   weight: number;
   reps: number;
   setNumber: number;
+  exerciseType: 'weight_reps' | 'time_based';
+  durationSeconds: number;
+  notes?: string | null;
 }
 
 export interface NormalizedSessionRecord {
   exerciseId: string;
   exerciseName: string;
+  exerciseType: 'weight_reps' | 'time_based';
   date: Date;
   sets: NormalizedSet[];
 }
@@ -72,6 +81,7 @@ export interface ExerciseOption {
   id: string;
   name: string;
   sessionCount: number;
+  exerciseType?: 'weight_reps' | 'time_based';
 }
 
 /**
@@ -86,21 +96,33 @@ export function normalizeSessionRecord(record: WorkoutSessionRecord): Normalized
   const validDate = isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
 
   const rawSets = record.sets ?? record.Sets ?? [];
+  const sessionExerciseType: 'weight_reps' | 'time_based' =
+    record.exerciseType ||
+    (rawSets.some((s) => (s.durationSeconds || s.duration_seconds || 0) > 0 || s.exerciseType === 'time_based')
+      ? 'time_based'
+      : 'weight_reps');
+
   const normalizedSets: NormalizedSet[] = rawSets.map((s, index) => {
     const weight = Number(s.weight ?? s.Weight ?? 0);
     const reps = Number(s.reps ?? s.Reps ?? 0);
     const setNumber = Number(s.setNumber ?? s.SetNumber ?? s.set_number ?? index + 1);
+    const durationSeconds = Number(s.durationSeconds ?? s.duration_seconds ?? 0);
+    const setExType = s.exerciseType || (durationSeconds > 0 ? 'time_based' : sessionExerciseType);
 
     return {
       weight: isNaN(weight) || weight < 0 ? 0 : weight,
       reps: isNaN(reps) || reps < 0 ? 0 : Math.floor(reps),
       setNumber,
+      exerciseType: setExType,
+      durationSeconds: isNaN(durationSeconds) || durationSeconds < 0 ? 0 : durationSeconds,
+      notes: s.notes || null,
     };
   });
 
   return {
     exerciseId: String(rawId || rawName || 'unknown'),
     exerciseName: String(rawName || `Exercise ${rawId}`),
+    exerciseType: sessionExerciseType,
     date: validDate,
     sets: normalizedSets,
   };
@@ -179,13 +201,27 @@ export function calculateSessionVolume(sets: NormalizedSet[]): number {
 
 /**
  * Generates a formatted summary string of all sets in a session.
- * e.g. "Set 1: 25 lbs × 13 reps | Set 2: 20 lbs × 7 reps"
+ * e.g. "Set 1: 25 lbs × 13 reps" or "Set 1: 20 min (20kg vest)"
  */
 export function formatSetsBreakdown(sets: NormalizedSet[], unit: string = 'lbs'): string {
   if (!sets || sets.length === 0) return 'No completed sets';
 
   return sets
-    .map((s) => `Set ${s.setNumber}: ${s.weight} ${unit} × ${s.reps} reps`)
+    .map((s) => {
+      if (s.exerciseType === 'time_based' || s.durationSeconds > 0) {
+        const mins = Math.floor(s.durationSeconds / 60);
+        const secs = s.durationSeconds % 60;
+        let timeStr = '';
+        if (mins > 0 && secs > 0) timeStr = `${mins}m ${secs}s`;
+        else if (mins > 0) timeStr = `${mins} min`;
+        else timeStr = `${secs}s`;
+
+        const noteStr = s.notes && s.notes.trim() ? ` (${s.notes.trim()})` : '';
+        return `Set ${s.setNumber}: ${timeStr}${noteStr}`;
+      }
+      const noteStr = s.notes && s.notes.trim() ? ` (${s.notes.trim()})` : '';
+      return `Set ${s.setNumber}: ${s.weight} ${unit} × ${s.reps} reps${noteStr}`;
+    })
     .join(' | ');
 }
 
@@ -193,7 +229,7 @@ export function formatSetsBreakdown(sets: NormalizedSet[], unit: string = 'lbs')
  * Returns distinct exercise options found in the records.
  */
 export function getAvailableExercises(records: WorkoutSessionRecord[]): ExerciseOption[] {
-  const map = new Map<string, { id: string; name: string; count: number }>();
+  const map = new Map<string, { id: string; name: string; count: number; exerciseType?: 'weight_reps' | 'time_based' }>();
 
   for (const raw of records) {
     const item = normalizeSessionRecord(raw);
@@ -203,24 +239,41 @@ export function getAvailableExercises(records: WorkoutSessionRecord[]): Exercise
     const existing = map.get(key);
     if (existing) {
       existing.count += 1;
+      if (item.exerciseType === 'time_based') existing.exerciseType = 'time_based';
     } else {
       map.set(key, {
         id: item.exerciseId,
         name: item.exerciseName,
         count: 1,
+        exerciseType: item.exerciseType,
       });
     }
   }
 
   return Array.from(map.values())
-    .map((v) => ({ id: v.id, name: v.name, sessionCount: v.count }))
+    .map((v) => ({ id: v.id, name: v.name, sessionCount: v.count, exerciseType: v.exerciseType }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /**
  * Returns user-friendly Y-Axis label for each analytical mode.
  */
-export function getModeYAxisLabel(mode: ProgressionMode, unit: string = 'lbs'): string {
+export function getModeYAxisLabel(
+  mode: ProgressionMode,
+  unit: string = 'lbs',
+  exerciseType: 'weight_reps' | 'time_based' = 'weight_reps'
+): string {
+  if (exerciseType === 'time_based') {
+    switch (mode) {
+      case 'e1rm':
+        return 'Max Single Hold / Duration (min)';
+      case 'topSet':
+        return 'Peak Set Duration (min)';
+      case 'volume':
+        return 'Total Time Logged (min)';
+    }
+  }
+
   switch (mode) {
     case 'e1rm':
       return `Estimated 1RM (${unit})`;
@@ -303,6 +356,7 @@ export function processExerciseProgression(
 
   // 4. Transform to ProcessedDataPoint for active mode
   return matching.map((session, index) => {
+    const isTimeBased = session.exerciseType === 'time_based';
     const dateFormatted = session.date.toLocaleDateString(undefined, {
       month: 'short',
       day: 'numeric',
@@ -316,24 +370,55 @@ export function processExerciseProgression(
 
     const topSet = calculateSessionTopSet(session.sets);
 
-    switch (mode) {
-      case 'e1rm': {
-        value = calculateSessionE1RM(session.sets);
-        displayValue = `${value.toLocaleString()} ${unit}`;
-        subValue = `Epley 1RM`;
-        break;
+    if (isTimeBased) {
+      // Time-based calculations in minutes (or seconds if < 1 min)
+      const durations = session.sets.map((s) => s.durationSeconds || 0);
+      const maxDurationSecs = durations.length > 0 ? Math.max(...durations) : 0;
+      const totalDurationSecs = durations.reduce((sum, d) => sum + d, 0);
+
+      const formatMinSec = (sec: number) => {
+        const m = Math.floor(sec / 60);
+        const s = sec % 60;
+        if (m > 0 && s > 0) return `${m}m ${s}s`;
+        if (m > 0) return `${m} min`;
+        return `${s}s`;
+      };
+
+      switch (mode) {
+        case 'e1rm':
+        case 'topSet': {
+          value = Math.round((maxDurationSecs / 60) * 10) / 10;
+          displayValue = formatMinSec(maxDurationSecs);
+          subValue = mode === 'e1rm' ? 'Longest Set Duration' : 'Top Set Duration';
+          break;
+        }
+        case 'volume': {
+          value = Math.round((totalDurationSecs / 60) * 10) / 10;
+          displayValue = formatMinSec(totalDurationSecs);
+          subValue = 'Total Session Duration';
+          break;
+        }
       }
-      case 'topSet': {
-        value = topSet.weight;
-        displayValue = `${topSet.weight} ${unit} × ${topSet.reps} reps`;
-        subValue = `Top Set Load`;
-        break;
-      }
-      case 'volume': {
-        value = calculateSessionVolume(session.sets);
-        displayValue = `${value.toLocaleString()} ${unit}`;
-        subValue = `Total Session Volume`;
-        break;
+    } else {
+      switch (mode) {
+        case 'e1rm': {
+          value = calculateSessionE1RM(session.sets);
+          displayValue = `${value.toLocaleString()} ${unit}`;
+          subValue = `Epley 1RM`;
+          break;
+        }
+        case 'topSet': {
+          value = topSet.weight;
+          displayValue = `${topSet.weight} ${unit} × ${topSet.reps} reps`;
+          subValue = `Top Set Load`;
+          break;
+        }
+        case 'volume': {
+          value = calculateSessionVolume(session.sets);
+          displayValue = `${value.toLocaleString()} ${unit}`;
+          subValue = `Total Session Volume`;
+          break;
+        }
       }
     }
 

@@ -73,7 +73,7 @@ export const ExercisesScreen: React.FC = () => {
     await loadData();
   };
 
-  const categories = ['All', 'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Abs'];
+  const categories = ['All', 'Chest', 'Back', 'Shoulders', 'Biceps', 'Triceps', 'Legs', 'Abs', 'Core', 'Cardio'];
 
   const filteredExercises = exercises.filter((ex) => {
     const matchesSearch =
@@ -89,6 +89,25 @@ export const ExercisesScreen: React.FC = () => {
         ex.muscle_groups.toLowerCase().includes('hamstring') ||
         ex.muscle_groups.toLowerCase().includes('glute') ||
         ex.muscle_groups.toLowerCase().includes('calf')
+      );
+    }
+
+    if (selectedCategory === 'Cardio') {
+      return (
+        ex.exercise_type === 'time_based' ||
+        ex.muscle_groups.toLowerCase().includes('cardio') ||
+        ex.muscle_groups.toLowerCase().includes('heart') ||
+        ex.muscle_groups.toLowerCase().includes('running') ||
+        ex.muscle_groups.toLowerCase().includes('treadmill')
+      );
+    }
+
+    if (selectedCategory === 'Core') {
+      return (
+        ex.muscle_groups.toLowerCase().includes('core') ||
+        ex.muscle_groups.toLowerCase().includes('abs') ||
+        ex.muscle_groups.toLowerCase().includes('abdom') ||
+        ex.muscle_groups.toLowerCase().includes('oblique')
       );
     }
 

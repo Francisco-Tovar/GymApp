@@ -734,16 +734,30 @@ export const fetchAllWorkoutSessionRecords = async (
 ): Promise<Array<{
   exerciseId: string;
   exerciseName: string;
+  exerciseType?: 'weight_reps' | 'time_based';
   date: string;
-  sets: Array<{ weight: number; reps: number; setNumber?: number; unit?: string }>;
+  sets: Array<{
+    weight: number;
+    reps: number;
+    setNumber?: number;
+    unit?: string;
+    exerciseType?: 'weight_reps' | 'time_based';
+    durationSeconds?: number;
+    notes?: string | null;
+  }>;
 }>> => {
   const allSessions = await db.sessions.toArray();
   const allSets = await db.session_sets.toArray();
   const allExercises = await db.exercises.toArray();
 
-  const exerciseMap = new Map<number, string>();
+  const exerciseMap = new Map<number, { name: string; type: 'weight_reps' | 'time_based' }>();
   for (const ex of allExercises) {
-    if (ex.id) exerciseMap.set(ex.id, ex.name);
+    if (ex.id) {
+      exerciseMap.set(ex.id, {
+        name: ex.name,
+        type: ex.exercise_type || 'weight_reps',
+      });
+    }
   }
 
   const sessionMap = new Map<number, { id: number; date: string }>();
@@ -755,8 +769,17 @@ export const fetchAllWorkoutSessionRecords = async (
   const grouped = new Map<string, {
     exerciseId: string;
     exerciseName: string;
+    exerciseType?: 'weight_reps' | 'time_based';
     date: string;
-    sets: Array<{ weight: number; reps: number; setNumber?: number; unit?: string }>;
+    sets: Array<{
+      weight: number;
+      reps: number;
+      setNumber?: number;
+      unit?: string;
+      exerciseType?: 'weight_reps' | 'time_based';
+      durationSeconds?: number;
+      notes?: string | null;
+    }>;
   }>();
 
   for (const setItem of allSets) {
@@ -765,7 +788,9 @@ export const fetchAllWorkoutSessionRecords = async (
     if (!session) continue;
 
     const key = `${setItem.session_id}-${setItem.exercise_id}`;
-    const exName = exerciseMap.get(setItem.exercise_id) || `Exercise #${setItem.exercise_id}`;
+    const exMeta = exerciseMap.get(setItem.exercise_id);
+    const exName = exMeta?.name || `Exercise #${setItem.exercise_id}`;
+    const exType = setItem.exercise_type || exMeta?.type || 'weight_reps';
     const convertedWeight = convertWeight(setItem.weight, setItem.unit || 'lb', targetUnit);
 
     let group = grouped.get(key);
@@ -773,6 +798,7 @@ export const fetchAllWorkoutSessionRecords = async (
       group = {
         exerciseId: String(setItem.exercise_id),
         exerciseName: exName,
+        exerciseType: exType,
         date: session.date,
         sets: [],
       };
@@ -784,6 +810,9 @@ export const fetchAllWorkoutSessionRecords = async (
       weight: convertedWeight,
       reps: setItem.reps,
       unit: targetUnit,
+      exerciseType: exType,
+      durationSeconds: setItem.duration_seconds || 0,
+      notes: setItem.notes || null,
     });
   }
 
@@ -799,9 +828,14 @@ export const fetchRoutineSessionRecords = async (
   const allExercises = await db.exercises.toArray();
   const allWorkouts = await db.workouts.toArray();
 
-  const exerciseMap = new Map<number, string>();
+  const exerciseMap = new Map<number, { name: string; type: 'weight_reps' | 'time_based' }>();
   for (const ex of allExercises) {
-    if (ex.id) exerciseMap.set(ex.id, ex.name);
+    if (ex.id) {
+      exerciseMap.set(ex.id, {
+        name: ex.name,
+        type: ex.exercise_type || 'weight_reps',
+      });
+    }
   }
 
   const workoutMap = new Map<number, string>();
@@ -828,24 +862,43 @@ export const fetchRoutineSessionRecords = async (
     const sets = sessionSetsBySession.get(s.id) || [];
     if (sets.length === 0) continue;
 
-    const exercisesMap = new Map<number, Array<{ weight: number; reps: number; setNumber?: number }>>();
+    const exercisesMap = new Map<
+      number,
+      Array<{
+        weight: number;
+        reps: number;
+        setNumber?: number;
+        exerciseType?: 'weight_reps' | 'time_based';
+        durationSeconds?: number;
+        notes?: string | null;
+      }>
+    >();
+
     for (const st of sets) {
       const list = exercisesMap.get(st.exercise_id) || [];
+      const exMeta = exerciseMap.get(st.exercise_id);
+      const exType = st.exercise_type || exMeta?.type || 'weight_reps';
       const convertedWeight = convertWeight(st.weight, st.unit || 'lb', targetUnit);
       list.push({
         weight: convertedWeight,
         reps: st.reps,
         setNumber: st.set_number,
+        exerciseType: exType,
+        durationSeconds: st.duration_seconds || 0,
+        notes: st.notes || null,
       });
       exercisesMap.set(st.exercise_id, list);
     }
 
     const exercises: RoutineExerciseInput[] = [];
     for (const [exId, exSets] of exercisesMap.entries()) {
-      const exName = exerciseMap.get(exId) || `Exercise #${exId}`;
+      const exMeta = exerciseMap.get(exId);
+      const exName = exMeta?.name || `Exercise #${exId}`;
+      const exType = exSets[0]?.exerciseType || exMeta?.type || 'weight_reps';
       exercises.push({
         exerciseId: String(exId),
         exerciseName: exName,
+        exerciseType: exType,
         sets: exSets,
       });
     }
