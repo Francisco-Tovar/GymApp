@@ -184,100 +184,153 @@ export const ExercisesScreen: React.FC = () => {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {filteredExercises.map((ex) => (
-            <Card key={ex.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0, paddingRight: '12px' }}>
-                {ex.imageUrl ? (
-                  <button
-                    type="button"
-                    onClick={() => setExerciseForGuide(ex)}
-                    title={language === 'es' ? 'Ver Guía del Ejercicio' : 'View Exercise Guide'}
-                    style={{
-                      width: '40px',
-                      height: '40px',
-                      borderRadius: 'var(--radius-sm, 6px)',
-                      overflow: 'hidden',
-                      border: '1px solid var(--border-color)',
-                      padding: 0,
-                      marginRight: '12px',
-                      cursor: 'pointer',
-                      flexShrink: 0,
-                      background: 'var(--bg-elevated)',
-                    }}
-                  >
-                    <img
-                      src={resolveImageUrl(ex.imageUrl)}
-                      alt={ex.name}
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  </button>
-                ) : null}
+            <Card
+              key={ex.id}
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '6px',
+                padding: '10px 12px',
+              }}
+            >
+              {/* Row 1: Exercise Image + Name + Controls in one aligned line */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '8px',
+                }}
+              >
+                {/* Left: Image (if exists) + Title */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                  {ex.imageUrl ? (
+                    <button
+                      type="button"
+                      onClick={() => setExerciseForGuide(ex)}
+                      title={language === 'es' ? 'Ver Guía del Ejercicio' : 'View Exercise Guide'}
+                      style={{
+                        width: '34px',
+                        height: '34px',
+                        borderRadius: 'var(--radius-sm, 6px)',
+                        overflow: 'hidden',
+                        border: '1px solid var(--border-color)',
+                        padding: 0,
+                        cursor: 'pointer',
+                        flexShrink: 0,
+                        background: 'var(--bg-elevated)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <img
+                        src={resolveImageUrl(ex.imageUrl)}
+                        alt={ex.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    </button>
+                  ) : null}
 
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                    <Typography variant="h3" style={{ fontSize: '15px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: 1 }}>
+                    <Typography
+                      variant="h3"
+                      style={{
+                        fontSize: '14.5px',
+                        fontWeight: 700,
+                        lineHeight: 1.25,
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        whiteSpace: 'nowrap',
+                      }}
+                      title={ex.name}
+                    >
                       {ex.name}
                     </Typography>
+
                     {(ex.imageUrl || ex.notes) && !ex.imageUrl && (
                       <span
                         title={language === 'es' ? 'Tiene notas' : 'Has notes'}
-                        style={{ color: 'var(--primary)', display: 'inline-flex' }}
+                        style={{ color: 'var(--primary)', display: 'inline-flex', flexShrink: 0 }}
                       >
                         <ImageIcon size={14} />
                       </span>
                     )}
                   </div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                    {ex.muscle_groups.split(',').map((m, idx) => (
-                      <Badge key={idx} variant="primary">
-                        {translateMuscleGroup(m.trim(), language)}
-                      </Badge>
-                    ))}
-                  </div>
+                </div>
+
+                {/* Right: Controls in-line with the name */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                  {(ex.imageUrl || ex.notes) && (
+                    <button
+                      type="button"
+                      onClick={() => setExerciseForGuide(ex)}
+                      className="btn btn-secondary btn-icon"
+                      style={{ width: '30px', height: '30px', color: 'var(--primary)' }}
+                      title={language === 'es' ? 'Ver Guía del Ejercicio' : 'View Exercise Guide'}
+                    >
+                      <Eye size={13} />
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setExerciseForChart(ex)}
+                    className="btn btn-secondary btn-icon"
+                    style={{ width: '30px', height: '30px', color: 'var(--accent)' }}
+                    title={language === 'es' ? 'Ver Gráfico de Sobrecarga Progresiva' : 'View Progressive Overload Chart'}
+                  >
+                    <TrendingUp size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExerciseToEdit(ex);
+                      setIsModalOpen(true);
+                    }}
+                    className="btn btn-secondary btn-icon"
+                    style={{ width: '30px', height: '30px' }}
+                    title={language === 'es' ? 'Editar Ejercicio' : 'Edit Exercise'}
+                  >
+                    <Edit2 size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setExerciseToDelete(ex)}
+                    className="btn btn-danger btn-icon"
+                    style={{ width: '30px', height: '30px' }}
+                    title={language === 'es' ? 'Eliminar Ejercicio' : 'Delete Exercise'}
+                  >
+                    <Trash2 size={13} />
+                  </button>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '4px' }}>
-                {(ex.imageUrl || ex.notes) && (
-                  <button
-                    type="button"
-                    onClick={() => setExerciseForGuide(ex)}
-                    className="btn btn-secondary btn-icon"
-                    style={{ width: '32px', height: '32px', color: 'var(--primary)' }}
-                    title={language === 'es' ? 'Ver Guía del Ejercicio' : 'View Exercise Guide'}
+              {/* Row 2: Muscle group pills in a single horizontal row */}
+              <div
+                style={{
+                  display: 'flex',
+                  flexWrap: 'nowrap',
+                  gap: '4px',
+                  overflowX: 'auto',
+                  scrollbarWidth: 'none',
+                  paddingBottom: '2px',
+                  paddingLeft: ex.imageUrl ? '42px' : '0px',
+                }}
+              >
+                {ex.muscle_groups.split(',').map((m, idx) => (
+                  <Badge
+                    key={idx}
+                    variant="primary"
+                    style={{
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                      padding: '2px 7px',
+                      fontSize: '10.5px',
+                    }}
                   >
-                    <Eye size={14} />
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setExerciseForChart(ex)}
-                  className="btn btn-secondary btn-icon"
-                  style={{ width: '32px', height: '32px', color: 'var(--accent)' }}
-                  title={language === 'es' ? 'Ver Gráfico de Sobrecarga Progresiva' : 'View Progressive Overload Chart'}
-                >
-                  <TrendingUp size={14} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setExerciseToEdit(ex);
-                    setIsModalOpen(true);
-                  }}
-                  className="btn btn-secondary btn-icon"
-                  style={{ width: '32px', height: '32px' }}
-                  title={language === 'es' ? 'Editar Ejercicio' : 'Edit Exercise'}
-                >
-                  <Edit2 size={14} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setExerciseToDelete(ex)}
-                  className="btn btn-danger btn-icon"
-                  style={{ width: '32px', height: '32px' }}
-                  title={language === 'es' ? 'Eliminar Ejercicio' : 'Delete Exercise'}
-                >
-                  <Trash2 size={14} />
-                </button>
+                    {translateMuscleGroup(m.trim(), language)}
+                  </Badge>
+                ))}
               </div>
             </Card>
           ))}
