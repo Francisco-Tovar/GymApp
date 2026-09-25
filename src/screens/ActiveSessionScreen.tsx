@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useActiveWorkoutStore } from '../store/useActiveWorkoutStore';
 import { useSettingsStore } from '../store/useSettingsStore';
+import { useToastStore } from '../store/useToastStore';
 import { t } from '../utils/i18n';
 import { fetchWorkoutById, fetchHeaviestWeightsMap, saveCompletedSession } from '../db/db';
 import { Exercise, SessionSet, WeightUnit } from '../types';
@@ -11,7 +12,7 @@ import { ActiveSetLogger } from '../components/organisms/ActiveSetLogger';
 import { ExerciseGuideModal } from '../components/organisms/ExerciseGuideModal';
 import { BodyMuscleMap } from '../components/organisms/BodyMuscleMap';
 import { requestWakeLock, releaseWakeLock, triggerVibration } from '../utils/hardwareApis';
-import { ArrowLeft, Clock, Timer, Check, AlertTriangle, ShieldCheck, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Clock, Timer, Check, CheckCircle2, AlertTriangle, ShieldCheck, RefreshCw, Trophy } from 'lucide-react';
 
 interface ActiveSessionScreenProps {
   workoutId?: number | null;
@@ -25,6 +26,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
   onFinishOrCancel,
 }) => {
   const { unit, toggleUnit, language } = useSettingsStore();
+  const { showToast } = useToastStore();
 
   const {
     isActive,
@@ -32,12 +34,14 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
     workoutName: activeWorkoutName,
     exercises,
     exerciseSetsMap,
+    completedExerciseIds,
     unit: activeUnit,
     startTime,
     startWorkout,
     addSet,
     removeSet,
     updateSet,
+    toggleExerciseCompleted,
     moveExerciseUp,
     moveExerciseDown,
     convertUnit,
@@ -46,6 +50,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
 
   const [loading, setLoading] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showFinishModal, setShowFinishModal] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [selectedGuideExercise, setSelectedGuideExercise] = useState<Exercise | null>(null);
 
@@ -155,16 +160,22 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
     exercises.forEach((ex) => {
       const sets = exerciseSetsMap[ex.id as number] || [];
       const isTimeBased = ex.exercise_type === 'time_based';
-      sets.forEach((setItem, index) => {
+      let validSetIdx = 1;
+
+      sets.forEach((setItem) => {
         const weightNum = parseFloat(setItem.weight) || 0;
         const repsNum = parseInt(setItem.reps, 10) || 0;
         const durationSecs =
           (parseInt(setItem.durationMinutes || '0', 10) || 0) * 60 +
           (parseInt(setItem.durationSeconds || '0', 10) || 0);
 
+        // Only record sets with valid non-zero values
+        const isValid = isTimeBased ? durationSecs > 0 : (weightNum > 0 && repsNum > 0);
+        if (!isValid) return;
+
         sessionSets.push({
           exercise_id: ex.id as number,
-          set_number: index + 1,
+          set_number: validSetIdx++,
           weight: weightNum,
           reps: repsNum,
           unit: activeUnit,
@@ -175,10 +186,19 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
       });
     });
 
+    if (sessionSets.length === 0) {
+      showToast(t('no_work_done_warning', language), 'warning', 3500);
+      triggerVibration([80, 50, 80]);
+      setShowFinishModal(false);
+      return;
+    }
+
     try {
       setLoading(true);
       await saveCompletedSession(activeWorkoutId, new Date().toISOString(), sessionSets);
       triggerVibration([100, 100, 200]);
+      showToast(t('workout_completed_toast', language), 'success', 4000);
+      setShowFinishModal(false);
       clearActiveWorkout();
       releaseWakeLock();
       onFinishOrCancel();
@@ -203,6 +223,32 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
   };
 
   const muscleGroups = exercises.map((e) => e.muscle_groups);
+  const totalSetsCount = exercises.reduce((acc, ex) => {
+    const sets = exerciseSetsMap[ex.id as number] || [];
+    const isTimeBased = ex.exercise_type === 'time_based';
+    const validCount = sets.filter((s) => {
+      if (isTimeBased) {
+        return (
+          (parseInt(s.durationMinutes || '0', 10) || 0) * 60 +
+          (parseInt(s.durationSeconds || '0', 10) || 0) > 0
+        );
+      }
+      return (parseFloat(s.weight) || 0) > 0 && (parseInt(s.reps, 10) || 0) > 0;
+    }).length;
+    return acc + validCount;
+  }, 0);
+  const finishedExercisesCount = (completedExerciseIds || []).filter((id) =>
+    exercises.some((e) => e.id === id)
+  ).length;
+
+  const handleOpenFinishModal = () => {
+    if (totalSetsCount === 0) {
+      showToast(t('no_work_done_warning', language), 'warning', 3500);
+      triggerVibration([80, 50, 80]);
+      return;
+    }
+    setShowFinishModal(true);
+  };
 
   return (
     <div className="animate-fade-in" style={{ paddingBottom: '40px' }}>
@@ -375,6 +421,8 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
             exercise={ex}
             sets={exerciseSetsMap[ex.id as number] || []}
             unit={activeUnit}
+            isCompleted={(completedExerciseIds || []).includes(ex.id as number)}
+            onToggleComplete={() => toggleExerciseCompleted(ex.id as number)}
             onAddSet={() => addSet(ex.id as number)}
             onRemoveSet={(setIdx) => removeSet(ex.id as number, setIdx)}
             onUpdateSet={(setIdx, field, val) => updateSet(ex.id as number, setIdx, field, val)}
@@ -410,13 +458,100 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
           variant="success"
           size="lg"
           leftIcon={<Check size={18} />}
-          onClick={handleFinish}
+          onClick={handleOpenFinishModal}
           disabled={loading}
-          style={{ flex: 2 }}
+          style={{ flex: 2, opacity: totalSetsCount === 0 ? 0.75 : 1 }}
+          title={totalSetsCount === 0 ? t('no_work_done_warning', language) : undefined}
         >
           {loading ? t('saving', language) : t('finish_workout', language)}
         </Button>
       </div>
+
+      {/* Finish Workout Confirmation Modal */}
+      <Modal
+        isOpen={showFinishModal}
+        onClose={() => setShowFinishModal(false)}
+        position="center"
+        maxWidth="440px"
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+          <div
+            style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: 'var(--radius-full)',
+              backgroundColor: 'rgba(16, 185, 129, 0.15)',
+              color: 'var(--success)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+            }}
+          >
+            <Trophy size={20} />
+          </div>
+          <Typography variant="h2">{t('finish_workout_title', language)}</Typography>
+        </div>
+
+        <Typography variant="body" color="var(--text-secondary)" style={{ marginBottom: '16px' }}>
+          {t('finish_workout_desc', language)}
+        </Typography>
+
+        {/* Workout Stats Summary Box */}
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(3, 1fr)',
+            gap: '8px',
+            backgroundColor: 'var(--bg-main)',
+            padding: '12px',
+            borderRadius: 'var(--radius-md)',
+            border: '1px solid var(--border-color)',
+            marginBottom: '20px',
+            textAlign: 'center',
+          }}
+        >
+          <div>
+            <Typography variant="caption" color="var(--text-muted)">
+              {t('duration', language)}
+            </Typography>
+            <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--primary)', marginTop: '2px' }}>
+              {formatTimer(elapsedSeconds)}
+            </div>
+          </div>
+          <div>
+            <Typography variant="caption" color="var(--text-muted)">
+              {t('exercises', language)}
+            </Typography>
+            <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)', marginTop: '2px' }}>
+              {finishedExercisesCount}/{exercises.length}
+            </div>
+          </div>
+          <div>
+            <Typography variant="caption" color="var(--text-muted)">
+              {t('sets', language)}
+            </Typography>
+            <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--text-primary)', marginTop: '2px' }}>
+              {totalSetsCount}
+            </div>
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <Button variant="secondary" onClick={() => setShowFinishModal(false)} style={{ flex: 1 }}>
+            {t('keep_going', language)}
+          </Button>
+          <Button
+            variant="success"
+            onClick={handleFinish}
+            disabled={loading}
+            leftIcon={<Check size={16} />}
+            style={{ flex: 1.3 }}
+          >
+            {loading ? t('saving', language) : t('confirm_finish', language)}
+          </Button>
+        </div>
+      </Modal>
 
       {/* Cancel Confirmation Modal */}
       <Modal

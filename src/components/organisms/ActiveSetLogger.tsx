@@ -7,14 +7,18 @@ import { Button } from '../atoms/Button';
 import { SetInputRow } from '../molecules/SetInputRow';
 import { LocalSetState } from '../../store/useActiveWorkoutStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
+import { useToastStore } from '../../store/useToastStore';
 import { t, translateMuscleGroup } from '../../utils/i18n';
 import { resolveImageUrl } from '../../utils/imageUtils';
-import { ChevronUp, ChevronDown, Plus, ChevronRight, Image as ImageIcon } from 'lucide-react';
+import { triggerVibration } from '../../utils/hardwareApis';
+import { ChevronUp, ChevronDown, Plus, ChevronRight, Check, CheckCircle2, RotateCcw } from 'lucide-react';
 
 interface ActiveSetLoggerProps {
   exercise: Exercise;
   sets: LocalSetState[];
   unit: WeightUnit;
+  isCompleted?: boolean;
+  onToggleComplete?: () => void;
   onAddSet: () => void;
   onRemoveSet: (index: number) => void;
   onUpdateSet: (
@@ -33,6 +37,8 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
   exercise,
   sets,
   unit,
+  isCompleted = false,
+  onToggleComplete,
   onAddSet,
   onRemoveSet,
   onUpdateSet,
@@ -44,6 +50,7 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
 }) => {
   const [collapsed, setCollapsed] = useState(true);
   const { language } = useSettingsStore();
+  const { showToast } = useToastStore();
   const longPressTimerRef = useRef<number | null>(null);
   const isLongPressTriggeredRef = useRef(false);
 
@@ -85,6 +92,20 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
     0
   );
 
+  const isSetValid = (s: LocalSetState) => {
+    if (isTimeBased) {
+      const durationSecs =
+        (parseInt(s.durationMinutes || '0', 10) || 0) * 60 +
+        (parseInt(s.durationSeconds || '0', 10) || 0);
+      return durationSecs > 0;
+    }
+    const weightNum = parseFloat(s.weight) || 0;
+    const repsNum = parseInt(s.reps, 10) || 0;
+    return weightNum > 0 && repsNum > 0;
+  };
+
+  const hasValidSetsToFinish = sets.length > 0 && sets.every(isSetValid);
+
   const formatSummaryDuration = (sec: number) => {
     const mins = Math.floor(sec / 60);
     const s = sec % 60;
@@ -93,8 +114,30 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
     return `${s}s`;
   };
 
+  const handleFinishExercise = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isCompleted) {
+      if (!hasValidSetsToFinish) {
+        showToast(t('invalid_set_warning', language), 'warning', 3500);
+        triggerVibration([80, 50, 80]);
+        return;
+      }
+      onToggleComplete?.();
+      setCollapsed(true);
+    } else {
+      onToggleComplete?.();
+    }
+  };
+
   return (
-    <Card style={{ margin: '10px 0', border: '1px solid var(--border-color)' }}>
+    <Card
+      style={{
+        margin: '10px 0',
+        border: isCompleted ? '1px solid rgba(16, 185, 129, 0.45)' : '1px solid var(--border-color)',
+        boxShadow: isCompleted ? '0 0 12px rgba(16, 185, 129, 0.08)' : undefined,
+        transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+      }}
+    >
       {/* Header */}
       <div
         style={{
@@ -126,7 +169,7 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
               : undefined
           }
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
             {exercise.imageUrl && (
               <button
                 type="button"
@@ -159,9 +202,28 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
               </button>
             )}
 
-            <Typography variant="h3" color="var(--text-primary)">
+            <Typography variant="h3" color={isCompleted ? 'var(--text-secondary)' : 'var(--text-primary)'}>
               {exercise.name}
             </Typography>
+
+            {isCompleted && (
+              <Badge
+                variant="primary"
+                style={{
+                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                  borderColor: 'var(--success)',
+                  color: 'var(--success)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '3px',
+                  fontWeight: 700,
+                  padding: '2px 8px',
+                }}
+              >
+                <Check size={11} /> {t('exercise_finished', language)}
+              </Badge>
+            )}
+
             <span style={{ color: 'var(--text-muted)' }}>
               {collapsed ? <ChevronRight size={18} /> : <ChevronDown size={18} />}
             </span>
@@ -252,17 +314,55 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
             ))
           )}
 
-          {/* Add Set Button */}
-          <div style={{ marginTop: '10px' }}>
+          {/* Action Buttons: Add Set & Finish/Reopen Exercise */}
+          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
             <Button
               type="button"
               variant="secondary"
               size="sm"
-              fullWidth
+              disabled={isCompleted}
+              style={{
+                flex: 1,
+                opacity: isCompleted ? 0.45 : 1,
+                cursor: isCompleted ? 'not-allowed' : 'pointer',
+              }}
               leftIcon={<Plus size={16} />}
               onClick={onAddSet}
+              title={
+                isCompleted
+                  ? language === 'es'
+                    ? 'Ejercicio completado. Reabre para agregar series'
+                    : 'Exercise completed. Reopen to add sets'
+                  : undefined
+              }
             >
               {t('add_set', language)}
+            </Button>
+            <Button
+              type="button"
+              variant={isCompleted ? 'secondary' : 'success'}
+              size="sm"
+              style={{
+                flex: 1,
+                backgroundColor: isCompleted ? 'rgba(16, 185, 129, 0.12)' : undefined,
+                borderColor: isCompleted ? 'var(--success)' : !hasValidSetsToFinish ? 'var(--border-color)' : undefined,
+                color: isCompleted ? 'var(--success)' : undefined,
+                opacity: !isCompleted && !hasValidSetsToFinish ? 0.7 : 1,
+                fontWeight: 600,
+              }}
+              leftIcon={isCompleted ? <RotateCcw size={15} /> : <Check size={16} />}
+              onClick={handleFinishExercise}
+              title={
+                isCompleted
+                  ? language === 'es'
+                    ? 'Toca para reabrir y modificar el ejercicio'
+                    : 'Click to reopen and edit exercise'
+                  : !hasValidSetsToFinish
+                  ? t('cannot_finish_exercise_desc', language)
+                  : undefined
+              }
+            >
+              {isCompleted ? t('reopen_exercise', language) : t('finish_exercise', language)}
             </Button>
           </div>
         </div>

@@ -9,6 +9,7 @@ import { HistoryScreen } from './screens/HistoryScreen';
 import { ProfileScreen } from './screens/ProfileScreen';
 import { ActiveSessionScreen } from './screens/ActiveSessionScreen';
 import { SettingsModal } from './components/organisms/SettingsModal';
+import { ToastContainer } from './components/atoms/ToastContainer';
 import { Typography } from './components/atoms/Typography';
 import { Dumbbell, Wifi, WifiOff, Settings } from 'lucide-react';
 import { t } from './utils/i18n';
@@ -225,6 +226,9 @@ export default function App() {
         isOpen={isSettingsOpen}
         onClose={() => setIsSettingsOpen(false)}
       />
+
+      {/* Toast Notifications */}
+      <ToastContainer />
     </>
   );
 }

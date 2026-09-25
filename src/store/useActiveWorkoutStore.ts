@@ -26,6 +26,8 @@ interface ActiveWorkoutState {
   unit: WeightUnit;
   startTime: number | null;
 
+  completedExerciseIds: number[];
+  toggleExerciseCompleted: (exerciseId: number) => void;
   startWorkout: (
     workoutId: number,
     workoutName: string,
@@ -59,6 +61,16 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
       currentDate: new Date().toISOString(),
       unit: 'lb',
       startTime: null,
+      completedExerciseIds: [],
+
+      toggleExerciseCompleted: (exerciseId: number) => {
+        const current = get().completedExerciseIds || [];
+        if (current.includes(exerciseId)) {
+          set({ completedExerciseIds: current.filter((id) => id !== exerciseId) });
+        } else {
+          set({ completedExerciseIds: [...current, exerciseId] });
+        }
+      },
 
       startWorkout: (workoutId, workoutName, exercises, initialSetsMap, unit) => {
         set({
@@ -70,10 +82,15 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           currentDate: new Date().toISOString(),
           unit,
           startTime: Date.now(),
+          completedExerciseIds: [],
         });
       },
 
       addSet: (exerciseId) => {
+        // Prevent adding sets if exercise is completed
+        if ((get().completedExerciseIds || []).includes(exerciseId)) {
+          return;
+        }
         const currentSets = get().exerciseSetsMap[exerciseId] || [];
         const lastSet = currentSets.length > 0 ? currentSets[currentSets.length - 1] : null;
         const lastWeight = lastSet ? lastSet.weight : '0';
@@ -174,6 +191,7 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
           workoutName: '',
           exercises: [],
           exerciseSetsMap: {},
+          completedExerciseIds: [],
           currentDate: new Date().toISOString(),
           startTime: null,
         });

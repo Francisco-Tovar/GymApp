@@ -1,6 +1,7 @@
 import React from 'react';
 import { WeightUnit } from '../../types';
 import { Typography } from '../atoms/Typography';
+import { NumericInput } from '../atoms/NumericInput';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { t } from '../../utils/i18n';
 import { Minus, Plus, X } from 'lucide-react';
@@ -127,12 +128,12 @@ export const SetInputRow: React.FC<SetInputRowProps> = ({
                 >
                   <Minus size={14} />
                 </button>
-                <input
-                  type="number"
-                  min="0"
+                <NumericInput
                   value={durationMinutes}
-                  onChange={(e) => onUpdateDurationMinutes?.(e.target.value)}
+                  onChange={(val) => onUpdateDurationMinutes?.(val)}
                   placeholder="0"
+                  allowDecimal={false}
+                  minNumber={0}
                   className="input-field"
                   style={{
                     padding: '6px 28px 6px 6px',
@@ -191,13 +192,13 @@ export const SetInputRow: React.FC<SetInputRowProps> = ({
                 >
                   <Minus size={14} />
                 </button>
-                <input
-                  type="number"
-                  min="0"
-                  max="59"
+                <NumericInput
                   value={durationSeconds}
-                  onChange={(e) => onUpdateDurationSeconds?.(e.target.value)}
+                  onChange={(val) => onUpdateDurationSeconds?.(val)}
                   placeholder="0"
+                  allowDecimal={false}
+                  minNumber={0}
+                  maxNumber={59}
                   className="input-field"
                   style={{
                     padding: '6px 28px 6px 6px',
@@ -259,12 +260,12 @@ export const SetInputRow: React.FC<SetInputRowProps> = ({
                 >
                   <Minus size={14} />
                 </button>
-                <input
-                  type="number"
-                  step="any"
+                <NumericInput
                   value={weight}
-                  onChange={(e) => onUpdateWeight(e.target.value)}
+                  onChange={(val) => onUpdateWeight(val)}
                   placeholder="0"
+                  allowDecimal={true}
+                  minNumber={0}
                   className="input-field"
                   style={{
                     padding: '6px 28px 6px 6px',
@@ -323,11 +324,12 @@ export const SetInputRow: React.FC<SetInputRowProps> = ({
                 >
                   <Minus size={14} />
                 </button>
-                <input
-                  type="number"
+                <NumericInput
                   value={reps}
-                  onChange={(e) => onUpdateReps(e.target.value)}
+                  onChange={(val) => onUpdateReps(val)}
                   placeholder="0"
+                  allowDecimal={false}
+                  minNumber={0}
                   className="input-field"
                   style={{
                     padding: '6px 32px 6px 6px',
