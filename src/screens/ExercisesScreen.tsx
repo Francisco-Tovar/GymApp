@@ -197,13 +197,13 @@ export const ExercisesScreen: React.FC = () => {
               <div
                 style={{
                   display: 'flex',
-                  alignItems: 'center',
+                  alignItems: 'flex-start',
                   justifyContent: 'space-between',
                   gap: '8px',
                 }}
               >
                 {/* Left: Image (if exists) + Title */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px', minWidth: 0, flex: 1 }}>
                   {ex.imageUrl ? (
                     <button
                       type="button"
@@ -222,6 +222,7 @@ export const ExercisesScreen: React.FC = () => {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
+                        marginTop: '1px',
                       }}
                     >
                       <img
@@ -232,18 +233,16 @@ export const ExercisesScreen: React.FC = () => {
                     </button>
                   ) : null}
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: 1 }}>
+                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', minWidth: 0, flex: 1, flexWrap: 'wrap' }}>
                     <Typography
                       variant="h3"
                       style={{
                         fontSize: '14.5px',
                         fontWeight: 700,
-                        lineHeight: 1.25,
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
+                        lineHeight: 1.3,
+                        wordBreak: 'break-word',
+                        overflowWrap: 'break-word',
                       }}
-                      title={ex.name}
                     >
                       {ex.name}
                     </Typography>
@@ -251,7 +250,7 @@ export const ExercisesScreen: React.FC = () => {
                     {(ex.imageUrl || ex.notes) && !ex.imageUrl && (
                       <span
                         title={language === 'es' ? 'Tiene notas' : 'Has notes'}
-                        style={{ color: 'var(--primary)', display: 'inline-flex', flexShrink: 0 }}
+                        style={{ color: 'var(--primary)', display: 'inline-flex', flexShrink: 0, marginTop: '2px' }}
                       >
                         <ImageIcon size={14} />
                       </span>
@@ -260,7 +259,7 @@ export const ExercisesScreen: React.FC = () => {
                 </div>
 
                 {/* Right: Controls in-line with the name */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0, marginTop: '1px' }}>
                   {(ex.imageUrl || ex.notes) && (
                     <button
                       type="button"
