@@ -7,6 +7,9 @@ export interface LocalSetState {
   id: string;
   weight: string;
   reps: string;
+  durationMinutes?: string;
+  durationSeconds?: string;
+  notes?: string;
 }
 
 export interface ExerciseSetsMap {
@@ -35,7 +38,7 @@ interface ActiveWorkoutState {
   updateSet: (
     exerciseId: number,
     index: number,
-    field: 'weight' | 'reps',
+    field: 'weight' | 'reps' | 'durationMinutes' | 'durationSeconds' | 'notes',
     value: string
   ) => void;
   setExercises: (exercises: Exercise[]) => void;
@@ -72,11 +75,17 @@ export const useActiveWorkoutStore = create<ActiveWorkoutState>()(
 
       addSet: (exerciseId) => {
         const currentSets = get().exerciseSetsMap[exerciseId] || [];
-        const lastWeight = currentSets.length > 0 ? currentSets[currentSets.length - 1].weight : '0';
+        const lastSet = currentSets.length > 0 ? currentSets[currentSets.length - 1] : null;
+        const lastWeight = lastSet ? lastSet.weight : '0';
+        const lastMinutes = lastSet?.durationMinutes || '0';
+        const lastSeconds = lastSet?.durationSeconds || '0';
         const newSet: LocalSetState = {
           id: (currentSets.length + 1).toString() + '-' + Date.now(),
           weight: lastWeight,
           reps: '0',
+          durationMinutes: lastMinutes,
+          durationSeconds: lastSeconds,
+          notes: '',
         };
         set((state) => ({
           exerciseSetsMap: {

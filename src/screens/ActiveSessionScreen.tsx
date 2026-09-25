@@ -154,15 +154,23 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
     const sessionSets: SessionSet[] = [];
     exercises.forEach((ex) => {
       const sets = exerciseSetsMap[ex.id as number] || [];
+      const isTimeBased = ex.exercise_type === 'time_based';
       sets.forEach((setItem, index) => {
         const weightNum = parseFloat(setItem.weight) || 0;
         const repsNum = parseInt(setItem.reps, 10) || 0;
+        const durationSecs =
+          (parseInt(setItem.durationMinutes || '0', 10) || 0) * 60 +
+          (parseInt(setItem.durationSeconds || '0', 10) || 0);
+
         sessionSets.push({
           exercise_id: ex.id as number,
           set_number: index + 1,
           weight: weightNum,
           reps: repsNum,
           unit: activeUnit,
+          exercise_type: ex.exercise_type || 'weight_reps',
+          duration_seconds: durationSecs,
+          notes: setItem.notes?.trim() || null,
         });
       });
     });

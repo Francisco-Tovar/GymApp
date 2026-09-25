@@ -470,7 +470,10 @@ export const fetchExercises = async (): Promise<Exercise[]> => {
     const key = ex.name.trim().toLowerCase();
     if (!seen.has(key)) {
       seen.add(key);
-      unique.push(ex);
+      unique.push({
+        ...ex,
+        exercise_type: ex.exercise_type || 'weight_reps',
+      });
     }
   }
   return unique;
@@ -480,21 +483,22 @@ export const insertExercise = async (
   name: string,
   muscleGroups: string,
   imageUrl?: string | null,
-  notes?: string | null
+  notes?: string | null,
+  exerciseType: Exercise['exercise_type'] = 'weight_reps'
 ): Promise<number> => {
   const existing = await db.exercises.where('name').equalsIgnoreCase(name.trim()).first();
   if (existing && existing.id) {
-    if (imageUrl !== undefined || notes !== undefined) {
-      await db.exercises.update(existing.id, {
-        ...(imageUrl !== undefined && { imageUrl }),
-        ...(notes !== undefined && { notes: notes?.trim() || null }),
-      });
-    }
+    await db.exercises.update(existing.id, {
+      ...(imageUrl !== undefined && { imageUrl }),
+      ...(notes !== undefined && { notes: notes?.trim() || null }),
+      ...(exerciseType !== undefined && { exercise_type: exerciseType }),
+    });
     return existing.id;
   }
   const id = await db.exercises.add({
     name: name.trim(),
     muscle_groups: muscleGroups.trim(),
+    exercise_type: exerciseType || 'weight_reps',
     imageUrl: imageUrl || null,
     notes: notes?.trim() || null,
   });
@@ -506,11 +510,13 @@ export const updateExercise = async (
   name: string,
   muscleGroups: string,
   imageUrl?: string | null,
-  notes?: string | null
+  notes?: string | null,
+  exerciseType: Exercise['exercise_type'] = 'weight_reps'
 ): Promise<void> => {
   await db.exercises.update(id, {
     name: name.trim(),
     muscle_groups: muscleGroups.trim(),
+    exercise_type: exerciseType || 'weight_reps',
     ...(imageUrl !== undefined && { imageUrl }),
     ...(notes !== undefined && { notes: notes?.trim() || null }),
   });
@@ -629,9 +635,12 @@ export const saveCompletedSession = async (
         session_id: Number(sessionId),
         exercise_id: setItem.exercise_id,
         set_number: setItem.set_number,
-        weight: setItem.weight,
-        reps: setItem.reps,
-        unit: setItem.unit,
+        weight: setItem.weight || 0,
+        reps: setItem.reps || 0,
+        unit: setItem.unit || 'lb',
+        exercise_type: setItem.exercise_type || 'weight_reps',
+        duration_seconds: setItem.duration_seconds || 0,
+        notes: setItem.notes?.trim() || null,
       });
     }
 

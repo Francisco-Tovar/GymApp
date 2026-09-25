@@ -17,7 +17,11 @@ interface ActiveSetLoggerProps {
   unit: WeightUnit;
   onAddSet: () => void;
   onRemoveSet: (index: number) => void;
-  onUpdateSet: (index: number, field: 'weight' | 'reps', value: string) => void;
+  onUpdateSet: (
+    index: number,
+    field: 'weight' | 'reps' | 'durationMinutes' | 'durationSeconds' | 'notes',
+    value: string
+  ) => void;
   onMoveUp?: () => void;
   onMoveDown?: () => void;
   canMoveUp?: boolean;
@@ -74,7 +78,20 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
     ? exercise.muscle_groups.split(',').map((m) => m.trim())
     : [];
 
+  const isTimeBased = exercise.exercise_type === 'time_based';
   const totalReps = sets.reduce((sum, s) => sum + (parseInt(s.reps, 10) || 0), 0);
+  const totalDurationSecs = sets.reduce(
+    (sum, s) => sum + (parseInt(s.durationMinutes || '0', 10) * 60 + parseInt(s.durationSeconds || '0', 10)),
+    0
+  );
+
+  const formatSummaryDuration = (sec: number) => {
+    const mins = Math.floor(sec / 60);
+    const s = sec % 60;
+    if (mins > 0 && s > 0) return `${mins}m ${s}s`;
+    if (mins > 0) return `${mins} min`;
+    return `${s}s`;
+  };
 
   return (
     <Card style={{ margin: '10px 0', border: '1px solid var(--border-color)' }}>
@@ -153,11 +170,19 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
           {collapsed ? (
             <div style={{ marginTop: '4px' }}>
               <Typography variant="caption" color="var(--text-muted)">
-                {sets.length} {t('sets', language)} · {totalReps} {t('total_reps', language)}
+                {sets.length} {t('sets', language)} ·{' '}
+                {isTimeBased
+                  ? `${formatSummaryDuration(totalDurationSecs)} ${t('duration', language).toLowerCase()}`
+                  : `${totalReps} ${t('total_reps', language)}`}
               </Typography>
             </div>
           ) : (
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '6px' }}>
+              {isTimeBased && (
+                <Badge variant="accent" style={{ borderColor: 'var(--accent)', color: 'var(--accent)' }}>
+                  ⏱️ {language === 'es' ? 'Por Tiempo' : 'Time-based'}
+                </Badge>
+              )}
               {muscleList.map((m, idx) => (
                 <Badge key={idx} variant="primary">
                   {translateMuscleGroup(m, language)}
@@ -210,11 +235,18 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
               <SetInputRow
                 key={set.id || index}
                 setNumber={index + 1}
+                exerciseType={exercise.exercise_type || 'weight_reps'}
                 weight={set.weight}
                 reps={set.reps}
+                durationMinutes={set.durationMinutes}
+                durationSeconds={set.durationSeconds}
+                notes={set.notes}
                 unit={unit}
                 onUpdateWeight={(val) => onUpdateSet(index, 'weight', val)}
                 onUpdateReps={(val) => onUpdateSet(index, 'reps', val)}
+                onUpdateDurationMinutes={(val) => onUpdateSet(index, 'durationMinutes', val)}
+                onUpdateDurationSeconds={(val) => onUpdateSet(index, 'durationSeconds', val)}
+                onUpdateNotes={(val) => onUpdateSet(index, 'notes', val)}
                 onRemoveSet={() => onRemoveSet(index)}
               />
             ))

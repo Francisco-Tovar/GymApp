@@ -537,24 +537,55 @@ export const HistoryScreen: React.FC = () => {
                               </Typography>
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                                 {exSets.map((setItem, idx) => {
+                                  const isTimeBased = setItem.exercise_type === 'time_based' || (setItem.duration_seconds && setItem.duration_seconds > 0);
                                   const convertedWeight = convertWeight(setItem.weight, setItem.unit || 'lb', unit);
+
+                                  const formatDuration = (totalSecs?: number) => {
+                                    if (!totalSecs) return `0 ${t('seconds', language)}`;
+                                    const mins = Math.floor(totalSecs / 60);
+                                    const s = totalSecs % 60;
+                                    if (mins > 0 && s > 0) return `${mins} ${t('minutes', language)} ${s} ${t('seconds', language)}`;
+                                    if (mins > 0) return `${mins} ${t('minutes', language)}`;
+                                    return `${s} ${t('seconds', language)}`;
+                                  };
+
                                   return (
                                     <div
                                       key={idx}
                                       style={{
                                         display: 'flex',
-                                        justifyContent: 'space-between',
+                                        flexDirection: 'column',
+                                        gap: '2px',
                                         fontSize: '12px',
                                         color: 'var(--text-secondary)',
-                                        padding: '2px 0',
+                                        padding: '3px 0',
+                                        borderBottom: idx < exSets.length - 1 ? '1px dashed rgba(255, 255, 255, 0.06)' : 'none',
                                       }}
                                     >
-                                      <span style={{ color: 'var(--text-muted)' }}>
-                                        {language === 'es' ? 'Serie' : 'Set'} {setItem.set_number}
-                                      </span>
-                                      <span style={{ fontWeight: 600 }}>
-                                        {convertedWeight} {unit} × {setItem.reps} reps
-                                      </span>
+                                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <span style={{ color: 'var(--text-muted)' }}>
+                                          {language === 'es' ? 'Serie' : 'Set'} {setItem.set_number}
+                                        </span>
+                                        <span style={{ fontWeight: 600 }}>
+                                          {isTimeBased ? (
+                                            `⏱️ ${formatDuration(setItem.duration_seconds)}`
+                                          ) : (
+                                            `${convertedWeight} ${unit} × ${setItem.reps} reps`
+                                          )}
+                                        </span>
+                                      </div>
+                                      {setItem.notes && setItem.notes.trim() !== '' && (
+                                        <span
+                                          style={{
+                                            fontSize: '11px',
+                                            color: 'var(--primary)',
+                                            fontStyle: 'italic',
+                                            paddingLeft: '6px',
+                                          }}
+                                        >
+                                          • {setItem.notes}
+                                        </span>
+                                      )}
                                     </div>
                                   );
                                 })}

@@ -17,7 +17,8 @@ interface ExerciseFormModalProps {
     name: string,
     muscleGroups: string,
     imageUrl?: string | null,
-    notes?: string | null
+    notes?: string | null,
+    exerciseType?: 'weight_reps' | 'time_based'
   ) => Promise<void>;
 }
 
@@ -45,6 +46,7 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
 }) => {
   const { language } = useSettingsStore();
   const [name, setName] = useState('');
+  const [exerciseType, setExerciseType] = useState<'weight_reps' | 'time_based'>('weight_reps');
   const [selectedMuscles, setSelectedMuscles] = useState<string[]>([]);
   const [customMuscle, setCustomMuscle] = useState('');
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -61,6 +63,7 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
   useEffect(() => {
     if (exerciseToEdit) {
       setName(exerciseToEdit.name);
+      setExerciseType(exerciseToEdit.exercise_type || 'weight_reps');
       const muscles = exerciseToEdit.muscle_groups
         ? exerciseToEdit.muscle_groups.split(',').map((m) => m.trim()).filter(Boolean)
         : [];
@@ -69,6 +72,7 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
       setNotes(exerciseToEdit.notes || '');
     } else {
       setName('');
+      setExerciseType('weight_reps');
       setSelectedMuscles([]);
       setImageUrl(null);
       setNotes('');
@@ -167,7 +171,7 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
     try {
       setLoading(true);
       setError('');
-      await onSubmit(name.trim(), selectedMuscles.join(', '), imageUrl, notes.trim() || null);
+      await onSubmit(name.trim(), selectedMuscles.join(', '), imageUrl, notes.trim() || null, exerciseType);
       onClose();
     } catch (err: any) {
       setError(err?.message || (language === 'es' ? 'Error al guardar el ejercicio.' : 'Failed to save exercise.'));
@@ -209,6 +213,57 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
             onChange={(e) => setName(e.target.value)}
             error={error}
           />
+
+          {/* Exercise Type Selection */}
+          <div>
+            <Typography variant="label" color="var(--text-secondary)" weight="bold" style={{ marginBottom: '8px', display: 'block' }}>
+              {t('exercise_type', language)}
+            </Typography>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <button
+                type="button"
+                onClick={() => setExerciseType('weight_reps')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  padding: '10px 8px',
+                  borderRadius: 'var(--radius-sm, 6px)',
+                  border: `1.5px solid ${exerciseType === 'weight_reps' ? 'var(--primary)' : 'var(--border-color)'}`,
+                  backgroundColor: exerciseType === 'weight_reps' ? 'var(--primary-subtle)' : 'var(--bg-main)',
+                  color: exerciseType === 'weight_reps' ? 'var(--primary)' : 'var(--text-secondary)',
+                  fontWeight: exerciseType === 'weight_reps' ? 700 : 500,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                🏋️ {t('type_weight_reps', language)}
+              </button>
+              <button
+                type="button"
+                onClick={() => setExerciseType('time_based')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  textAlign: 'center',
+                  padding: '10px 8px',
+                  borderRadius: 'var(--radius-sm, 6px)',
+                  border: `1.5px solid ${exerciseType === 'time_based' ? 'var(--primary)' : 'var(--border-color)'}`,
+                  backgroundColor: exerciseType === 'time_based' ? 'var(--primary-subtle)' : 'var(--bg-main)',
+                  color: exerciseType === 'time_based' ? 'var(--primary)' : 'var(--text-secondary)',
+                  fontWeight: exerciseType === 'time_based' ? 700 : 500,
+                  fontSize: '12px',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                ⏱️ {t('type_time_based', language)}
+              </button>
+            </div>
+          </div>
 
           {/* Muscle Groups Selection */}
           <div>

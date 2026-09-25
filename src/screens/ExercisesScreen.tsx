@@ -54,12 +54,13 @@ export const ExercisesScreen: React.FC = () => {
     name: string,
     muscleGroups: string,
     imageUrl?: string | null,
-    notes?: string | null
+    notes?: string | null,
+    exerciseType?: 'weight_reps' | 'time_based'
   ) => {
     if (exerciseToEdit?.id) {
-      await updateExercise(exerciseToEdit.id, name, muscleGroups, imageUrl, notes);
+      await updateExercise(exerciseToEdit.id, name, muscleGroups, imageUrl, notes, exerciseType);
     } else {
-      await insertExercise(name, muscleGroups, imageUrl, notes);
+      await insertExercise(name, muscleGroups, imageUrl, notes, exerciseType);
     }
     await loadData();
     setExerciseToEdit(null);
@@ -304,7 +305,7 @@ export const ExercisesScreen: React.FC = () => {
                 </div>
               </div>
 
-              {/* Row 2: Muscle group pills in a single horizontal row */}
+              {/* Row 2: Muscle group pills + Type indicator in a single horizontal row */}
               <div
                 style={{
                   display: 'flex',
@@ -316,6 +317,21 @@ export const ExercisesScreen: React.FC = () => {
                   paddingLeft: ex.imageUrl ? '42px' : '0px',
                 }}
               >
+                {ex.exercise_type === 'time_based' && (
+                  <Badge
+                    variant="accent"
+                    style={{
+                      whiteSpace: 'nowrap',
+                      flexShrink: 0,
+                      padding: '2px 7px',
+                      fontSize: '10.5px',
+                      borderColor: 'var(--accent)',
+                      color: 'var(--accent)',
+                    }}
+                  >
+                    ⏱️ {language === 'es' ? 'Por Tiempo' : 'Time-based'}
+                  </Badge>
+                )}
                 {ex.muscle_groups.split(',').map((m, idx) => (
                   <Badge
                     key={idx}

@@ -3,10 +3,13 @@ export type AppTheme = 'dark' | 'light';
 export type AppLanguage = 'en' | 'es';
 export type FontSize = 'small' | 'medium' | 'large';
 
+export type ExerciseType = 'weight_reps' | 'time_based';
+
 export interface Exercise {
   id?: number;
   name: string;
   muscle_groups: string;
+  exercise_type?: ExerciseType;
   imageUrl?: string | null;
   notes?: string | null;
 }
@@ -35,6 +38,9 @@ export interface SessionSet {
   weight: number;
   reps: number;
   unit: WeightUnit;
+  exercise_type?: ExerciseType;
+  duration_seconds?: number;
+  notes?: string | null;
 }
 
 export interface WorkoutExercise {
