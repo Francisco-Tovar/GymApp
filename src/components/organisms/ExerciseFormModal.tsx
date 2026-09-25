@@ -6,7 +6,7 @@ import { Button } from '../atoms/Button';
 import { Modal } from '../atoms/Modal';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { t, translateMuscleGroup } from '../../utils/i18n';
-import { compressImage, isValidImageUrl } from '../../utils/imageUtils';
+import { compressImage, isValidImageUrl, resolveImageUrl } from '../../utils/imageUtils';
 import { X, Plus, Upload, Trash2, Link, FileText, Image as ImageIcon, Check } from 'lucide-react';
 
 interface ExerciseFormModalProps {
@@ -317,7 +317,7 @@ export const ExerciseFormModal: React.FC<ExerciseFormModalProps> = ({
                   }}
                 >
                   <img
-                    src={imageUrl}
+                    src={resolveImageUrl(imageUrl)}
                     alt="Guide preview"
                     style={{
                       width: '100%',

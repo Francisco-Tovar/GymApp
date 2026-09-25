@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { db, saveUserProfile, addBodyMetric, updateBodyMetric, deleteBodyMetric } from '../db/db';
+import { db, saveUserProfile, addBodyMetric, updateBodyMetric, deleteBodyMetric, clearAllBodyMetrics } from '../db/db';
 import { UserProfile, BodyMetricLog } from '../types';
 import { calculateAge, formatHeight, calculateBMI, getBMICategory } from '../utils/vitals';
 import { convertWeight } from '../utils/unitConversion';
@@ -9,6 +9,8 @@ import { t } from '../utils/i18n';
 import { Typography } from '../components/atoms/Typography';
 import { Card } from '../components/atoms/Card';
 import { Badge } from '../components/atoms/Badge';
+import { Modal } from '../components/atoms/Modal';
+import { Button } from '../components/atoms/Button';
 import { BodyMetricsChart } from '../components/organisms/BodyMetricsChart';
 import { ProfileEditModal } from '../components/organisms/ProfileEditModal';
 import { BodyMetricModal } from '../components/organisms/BodyMetricModal';
@@ -30,6 +32,7 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronLeft,
+  AlertTriangle,
 } from 'lucide-react';
 
 export const ProfileScreen: React.FC = () => {
@@ -51,6 +54,7 @@ export const ProfileScreen: React.FC = () => {
   const [isLogModalOpen, setIsLogModalOpen] = useState(false);
   const [entryToEdit, setEntryToEdit] = useState<BodyMetricLog | null>(null);
   const [isHistoryExpanded, setIsHistoryExpanded] = useState(false);
+  const [showClearModal, setShowClearModal] = useState(false);
 
   // Pagination state
   const [pageSize, setPageSize] = useState<number>(5);
@@ -117,6 +121,11 @@ export const ProfileScreen: React.FC = () => {
 
   const handleDeleteMetric = async (id: number) => {
     await deleteBodyMetric(id);
+  };
+
+  const handleClearAllLogs = async () => {
+    await clearAllBodyMetrics();
+    setShowClearModal(false);
   };
 
   const formatLogDate = (isoStr: string) => {
@@ -428,40 +437,64 @@ export const ProfileScreen: React.FC = () => {
                   {t('showing', language)} <strong style={{ color: 'var(--text-primary)' }}>{logs.length > 0 ? startIndex + 1 : 0}–{endIndex}</strong> {t('of', language)} <strong style={{ color: 'var(--text-primary)' }}>{logs.length}</strong>
                 </span>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
-                    {t('per_page', language)}:
-                  </span>
-                  <div
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--text-tertiary)' }}>
+                      {t('per_page', language)}:
+                    </span>
+                    <div
+                      style={{
+                        display: 'inline-flex',
+                        backgroundColor: 'var(--bg-card)',
+                        borderRadius: 'var(--radius-sm)',
+                        padding: '2px',
+                        border: '1px solid var(--border-color)',
+                      }}
+                    >
+                      {[5, 10, 50].map((size) => (
+                        <button
+                          key={size}
+                          type="button"
+                          onClick={() => handlePageSizeChange(size)}
+                          style={{
+                            background: pageSize === size ? 'var(--primary)' : 'transparent',
+                            color: pageSize === size ? '#fff' : 'var(--text-secondary)',
+                            border: 'none',
+                            borderRadius: '4px',
+                            padding: '2px 8px',
+                            fontSize: '11px',
+                            fontWeight: pageSize === size ? 700 : 500,
+                            cursor: 'pointer',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          {size}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setShowClearModal(true)}
+                    title={language === 'es' ? 'Limpiar historial de pesajes' : 'Clear all weigh-ins'}
                     style={{
                       display: 'inline-flex',
-                      backgroundColor: 'var(--bg-card)',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: 'rgba(239, 68, 68, 0.12)',
+                      color: 'var(--danger)',
+                      border: '1px solid rgba(239, 68, 68, 0.25)',
                       borderRadius: 'var(--radius-sm)',
-                      padding: '2px',
-                      border: '1px solid var(--border-color)',
+                      padding: '4px 8px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
                     }}
                   >
-                    {[5, 10, 50].map((size) => (
-                      <button
-                        key={size}
-                        type="button"
-                        onClick={() => handlePageSizeChange(size)}
-                        style={{
-                          background: pageSize === size ? 'var(--primary)' : 'transparent',
-                          color: pageSize === size ? '#fff' : 'var(--text-secondary)',
-                          border: 'none',
-                          borderRadius: '4px',
-                          padding: '2px 8px',
-                          fontSize: '11px',
-                          fontWeight: pageSize === size ? 700 : 500,
-                          cursor: 'pointer',
-                          transition: 'all 0.15s ease',
-                        }}
-                      >
-                        {size}
-                      </button>
-                    ))}
-                  </div>
+                    <Trash2 size={12} />
+                    {language === 'es' ? 'Limpiar Todo' : 'Clear All'}
+                  </button>
                 </div>
               </div>
 
@@ -629,6 +662,34 @@ export const ProfileScreen: React.FC = () => {
         onSave={handleSaveMetric}
         onDelete={handleDeleteMetric}
       />
+
+      {/* Clear All Confirmation Modal */}
+      <Modal
+        isOpen={showClearModal}
+        onClose={() => setShowClearModal(false)}
+        position="center"
+        maxWidth="420px"
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
+          <AlertTriangle size={24} color="var(--danger)" />
+          <Typography variant="h2" style={{ fontSize: '18px', fontWeight: 800 }}>
+            {language === 'es' ? '¿Limpiar todos los pesajes?' : 'Clear all weigh-ins?'}
+          </Typography>
+        </div>
+        <Typography variant="body" color="var(--text-secondary)" style={{ marginBottom: '20px', fontSize: '14px' }}>
+          {language === 'es'
+            ? 'Esta acción eliminará todos los registros de peso y métricas corporales actuales. Esta acción no se puede deshacer.'
+            : 'This will remove all current body weight and composition logs. This action cannot be undone.'}
+        </Typography>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <Button variant="secondary" onClick={() => setShowClearModal(false)} style={{ flex: 1 }}>
+            {t('cancel', language)}
+          </Button>
+          <Button variant="danger" onClick={handleClearAllLogs} style={{ flex: 1 }}>
+            {language === 'es' ? 'Limpiar Todo' : 'Clear All'}
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 };

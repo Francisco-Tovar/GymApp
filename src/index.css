@@ -210,7 +210,11 @@ h1, h2, h3, h4, h5, h6 {
 
 .main-content {
   flex: 1;
-  padding: 16px 16px calc(80px + var(--safe-bottom));
+  padding: calc(16px + var(--safe-top)) 16px calc(80px + var(--safe-bottom));
+}
+
+.has-header .main-content {
+  padding-top: 16px;
 }
 
 /* Bottom Tab Bar */

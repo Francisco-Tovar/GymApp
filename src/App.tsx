@@ -187,7 +187,7 @@ export default function App() {
       )}
 
       {/* Main Content Area */}
-      <main className="main-content">
+      <main className={`main-content ${!inSessionView ? 'has-header' : ''}`}>
         {inSessionView ? (
           <ActiveSessionScreen
             workoutId={selectedWorkout?.id || activeWorkoutId}

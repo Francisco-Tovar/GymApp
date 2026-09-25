@@ -11,6 +11,7 @@ import { ExerciseFormModal } from '../components/organisms/ExerciseFormModal';
 import { ExerciseGuideModal } from '../components/organisms/ExerciseGuideModal';
 import { ProgressiveOverloadChart } from '../components/organisms/ProgressiveOverloadChart';
 import { WorkoutSessionRecord } from '../utils/progressiveOverload';
+import { resolveImageUrl } from '../utils/imageUtils';
 import { t, translateMuscleGroup } from '../utils/i18n';
 import { Plus, Search, Edit2, Trash2, Library, TrendingUp, Eye, Image as ImageIcon } from 'lucide-react';
 
@@ -204,7 +205,7 @@ export const ExercisesScreen: React.FC = () => {
                     }}
                   >
                     <img
-                      src={ex.imageUrl}
+                      src={resolveImageUrl(ex.imageUrl)}
                       alt={ex.name}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />

@@ -8,6 +8,7 @@ import { SetInputRow } from '../molecules/SetInputRow';
 import { LocalSetState } from '../../store/useActiveWorkoutStore';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { t, translateMuscleGroup } from '../../utils/i18n';
+import { resolveImageUrl } from '../../utils/imageUtils';
 import { ChevronUp, ChevronDown, Plus, ChevronRight, Image as ImageIcon } from 'lucide-react';
 
 interface ActiveSetLoggerProps {
@@ -37,7 +38,7 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
   canMoveDown = false,
   onOpenGuide,
 }) => {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const { language } = useSettingsStore();
   const longPressTimerRef = useRef<number | null>(null);
   const isLongPressTriggeredRef = useRef(false);
@@ -134,7 +135,7 @@ export const ActiveSetLogger: React.FC<ActiveSetLoggerProps> = ({
                 }}
               >
                 <img
-                  src={exercise.imageUrl}
+                  src={resolveImageUrl(exercise.imageUrl)}
                   alt=""
                   style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />

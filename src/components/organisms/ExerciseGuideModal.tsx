@@ -5,6 +5,7 @@ import { Typography } from '../atoms/Typography';
 import { Badge } from '../atoms/Badge';
 import { useSettingsStore } from '../../store/useSettingsStore';
 import { t, translateMuscleGroup } from '../../utils/i18n';
+import { resolveImageUrl } from '../../utils/imageUtils';
 import { FileText, Image as ImageIcon } from 'lucide-react';
 
 interface ExerciseGuideModalProps {
@@ -135,7 +136,7 @@ export const ExerciseGuideModal: React.FC<ExerciseGuideModalProps> = ({
               }}
             >
               <img
-                src={exercise.imageUrl}
+                src={resolveImageUrl(exercise.imageUrl)}
                 alt={exercise.name}
                 style={{
                   maxWidth: '100%',

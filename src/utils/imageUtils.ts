@@ -109,3 +109,20 @@ export function isValidImageUrl(url: string): boolean {
     return false;
   }
 }
+
+/**
+ * Resolves an image URL against Vite's import.meta.env.BASE_URL
+ * so relative assets like /exercises/xyz.jpg work in subpaths such as GitHub Pages.
+ */
+export function resolveImageUrl(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  const trimmed = url.trim();
+  if (trimmed.startsWith('data:') || trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+
+  const base = (import.meta.env?.BASE_URL || '/').replace(/\/+$/, '');
+  const cleanPath = trimmed.replace(/^\/+/, '');
+  return `${base}/${cleanPath}`;
+}
+

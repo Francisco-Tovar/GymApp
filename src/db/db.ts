@@ -911,3 +911,11 @@ export const deleteBodyMetric = async (id: number): Promise<void> => {
   await db.body_metrics.delete(id);
 };
 
+/**
+ * Clears all body metrics log entries from the database.
+ */
+export const clearAllBodyMetrics = async (): Promise<void> => {
+  await db.body_metrics.clear();
+};
+
+
