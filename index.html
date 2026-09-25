@@ -17,14 +17,20 @@
       (function() {
         try {
           var raw = localStorage.getItem('gymapp-settings');
-          var theme = (raw && JSON.parse(raw)?.state?.theme) || 'dark';
+          var parsed = raw ? JSON.parse(raw) : null;
+          var theme = parsed?.state?.theme || 'dark';
+          var fontSize = parsed?.state?.fontSize || 'small';
           document.documentElement.setAttribute('data-theme', theme);
           document.documentElement.classList.add(theme);
+          document.documentElement.setAttribute('data-font-size', fontSize);
+          document.documentElement.classList.add('font-' + fontSize);
           var meta = document.querySelector('meta[name="theme-color"]');
           if (meta) meta.setAttribute('content', theme === 'dark' ? '#0f172a' : '#ffffff');
         } catch (e) {
           document.documentElement.setAttribute('data-theme', 'dark');
           document.documentElement.classList.add('dark');
+          document.documentElement.setAttribute('data-font-size', 'small');
+          document.documentElement.classList.add('font-small');
         }
       })();
     </script>

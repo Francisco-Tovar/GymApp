@@ -1,16 +1,18 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
-import { WeightUnit, AppTheme, AppLanguage } from '../types';
+import { WeightUnit, AppTheme, AppLanguage, FontSize } from '../types';
 
 interface SettingsState {
   unit: WeightUnit;
   theme: AppTheme;
   language: AppLanguage;
+  fontSize: FontSize;
   setUnit: (unit: WeightUnit) => void;
   toggleUnit: () => void;
   setTheme: (theme: AppTheme) => void;
   toggleTheme: () => void;
   setLanguage: (language: AppLanguage) => void;
+  setFontSize: (fontSize: FontSize) => void;
 }
 
 export function applyThemeToDocument(theme: AppTheme): void {
@@ -26,12 +28,21 @@ export function applyThemeToDocument(theme: AppTheme): void {
   }
 }
 
+export function applyFontSizeToDocument(fontSize: FontSize): void {
+  if (typeof document === 'undefined') return;
+  const root = document.documentElement;
+  root.setAttribute('data-font-size', fontSize);
+  root.classList.remove('font-small', 'font-medium', 'font-large');
+  root.classList.add(`font-${fontSize}`);
+}
+
 export const useSettingsStore = create<SettingsState>()(
   persist(
     (set, get) => ({
       unit: 'lb',
       theme: 'dark',
       language: 'en',
+      fontSize: 'small',
       setUnit: (unit) => set({ unit }),
       toggleUnit: () => set((state) => ({ unit: state.unit === 'kg' ? 'lb' : 'kg' })),
       setTheme: (theme) => {
@@ -44,6 +55,10 @@ export const useSettingsStore = create<SettingsState>()(
         set({ theme: next });
       },
       setLanguage: (language) => set({ language }),
+      setFontSize: (fontSize) => {
+        applyFontSizeToDocument(fontSize);
+        set({ fontSize });
+      },
     }),
     {
       name: 'gymapp-settings',
@@ -60,24 +75,30 @@ export const useSettingsStore = create<SettingsState>()(
       onRehydrateStorage: () => (state) => {
         if (state) {
           applyThemeToDocument(state.theme || 'dark');
+          applyFontSizeToDocument(state.fontSize || 'small');
         }
       },
     }
   )
 );
 
-// Apply initial theme immediately to prevent Flash Of Unstyled Theme (FOUT)
+// Apply initial theme & font size immediately to prevent Flash Of Unstyled Content
 if (typeof window !== 'undefined') {
   try {
     const raw = localStorage.getItem('gymapp-settings');
     if (raw) {
       const parsed = JSON.parse(raw);
       const savedTheme: AppTheme = parsed?.state?.theme || 'dark';
+      const savedFontSize: FontSize = parsed?.state?.fontSize || 'small';
       applyThemeToDocument(savedTheme);
+      applyFontSizeToDocument(savedFontSize);
     } else {
       applyThemeToDocument('dark');
+      applyFontSizeToDocument('small');
     }
   } catch {
     applyThemeToDocument('dark');
+    applyFontSizeToDocument('small');
   }
 }
+

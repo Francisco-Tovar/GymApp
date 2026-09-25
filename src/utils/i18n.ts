@@ -156,7 +156,7 @@ export const TRANSLATIONS = {
 
     // Settings Modal
     settings_title: 'Application Settings',
-    settings_subtitle: 'Manage theme, language, and system data preferences',
+    settings_subtitle: 'Manage theme, language, font size, and system data preferences',
     theme: 'Theme',
     dark_mode: 'Dark Mode',
     light_mode: 'Light Mode',
@@ -164,6 +164,10 @@ export const TRANSLATIONS = {
     weight_unit: 'Default Weight Unit',
     pounds: 'Pounds (LB)',
     kilograms: 'Kilograms (KG)',
+    font_size: 'Font Size',
+    font_small: 'Small (Default)',
+    font_medium: 'Medium',
+    font_large: 'Large',
 
     // Danger Zone
     danger_zone: 'Danger Zone',
@@ -389,7 +393,7 @@ export const TRANSLATIONS = {
 
     // Settings Modal
     settings_title: 'Configuración',
-    settings_subtitle: 'Administra tema, idioma y preferencias de datos',
+    settings_subtitle: 'Administra tema, idioma, tamaño de letra y preferencias de datos',
     theme: 'Tema',
     dark_mode: 'Modo Oscuro',
     light_mode: 'Modo Claro',
@@ -397,6 +401,10 @@ export const TRANSLATIONS = {
     weight_unit: 'Unidad de Peso',
     pounds: 'Libras (LB)',
     kilograms: 'Kilogramos (KG)',
+    font_size: 'Tamaño de Letra',
+    font_small: 'Pequeño (Por Defecto)',
+    font_medium: 'Mediano',
+    font_large: 'Grande',
 
     // Danger Zone
     danger_zone: 'Zona de Peligro',

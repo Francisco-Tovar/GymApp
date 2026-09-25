@@ -75,7 +75,18 @@ function runSettingsTestSuite() {
   store.toggleUnit();
   console.assert(useSettingsStore.getState().unit === 'lb', 'toggleUnit to lb failed');
 
-  // Test 10: All Spanish dictionary entries exist for English keys
+  // Test 10: Font Size switching
+  console.assert(t('font_size', 'en') === 'Font Size', 'English font_size mismatch');
+  console.assert(t('font_size', 'es') === 'Tamaño de Letra', 'Spanish font_size mismatch');
+  console.assert(store.fontSize === 'small', 'Default fontSize should be small');
+  store.setFontSize('medium');
+  console.assert(useSettingsStore.getState().fontSize === 'medium', 'setFontSize to medium failed');
+  store.setFontSize('large');
+  console.assert(useSettingsStore.getState().fontSize === 'large', 'setFontSize to large failed');
+  store.setFontSize('small');
+  console.assert(useSettingsStore.getState().fontSize === 'small', 'setFontSize back to small failed');
+
+  // Test 11: All Spanish dictionary entries exist for English keys
   const enKeys = Object.keys(TRANSLATIONS.en) as (keyof typeof TRANSLATIONS.en)[];
   let missingCount = 0;
   for (const k of enKeys) {

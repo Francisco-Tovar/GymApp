@@ -12,6 +12,7 @@ import {
   Sun,
   Languages,
   Scale,
+  Type,
   AlertTriangle,
   Trash2,
   CheckCircle2,
@@ -28,7 +29,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   onClose,
   onDataWiped,
 }) => {
-  const { theme, setTheme, language, setLanguage, unit, setUnit } = useSettingsStore();
+  const { theme, setTheme, language, setLanguage, unit, setUnit, fontSize, setFontSize } = useSettingsStore();
 
   const [isWipeConfirmOpen, setIsWipeConfirmOpen] = useState(false);
   const [isWiping, setIsWiping] = useState(false);
@@ -349,6 +350,97 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                 }}
               >
                 <span>{t('kilograms', language)}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Setting 4: Font Size Preference (Small, Medium, Large) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Type size={15} color="var(--primary)" />
+              <Typography variant="h3" style={{ fontSize: '14px', fontWeight: 700 }}>
+                {t('font_size', language)}
+              </Typography>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr 1fr',
+                backgroundColor: 'var(--bg-main)',
+                padding: '4px',
+                borderRadius: 'var(--radius-md)',
+                border: '1px solid var(--border-color)',
+                gap: '4px',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setFontSize('small')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '9px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: 'none',
+                  fontSize: '12px',
+                  fontWeight: fontSize === 'small' ? 700 : 500,
+                  cursor: 'pointer',
+                  backgroundColor: fontSize === 'small' ? 'var(--primary)' : 'transparent',
+                  color: fontSize === 'small' ? '#ffffff' : 'var(--text-muted)',
+                  boxShadow: fontSize === 'small' ? '0 2px 8px var(--primary-glow)' : 'none',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <span>{t('font_small', language)}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFontSize('medium')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '9px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: 'none',
+                  fontSize: '13px',
+                  fontWeight: fontSize === 'medium' ? 700 : 500,
+                  cursor: 'pointer',
+                  backgroundColor: fontSize === 'medium' ? 'var(--primary)' : 'transparent',
+                  color: fontSize === 'medium' ? '#ffffff' : 'var(--text-muted)',
+                  boxShadow: fontSize === 'medium' ? '0 2px 8px var(--primary-glow)' : 'none',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <span>{t('font_medium', language)}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setFontSize('large')}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  padding: '9px 8px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: 'none',
+                  fontSize: '14px',
+                  fontWeight: fontSize === 'large' ? 700 : 500,
+                  cursor: 'pointer',
+                  backgroundColor: fontSize === 'large' ? 'var(--primary)' : 'transparent',
+                  color: fontSize === 'large' ? '#ffffff' : 'var(--text-muted)',
+                  boxShadow: fontSize === 'large' ? '0 2px 8px var(--primary-glow)' : 'none',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <span>{t('font_large', language)}</span>
               </button>
             </div>
           </div>

@@ -1,6 +1,7 @@
 export type WeightUnit = 'lb' | 'kg';
 export type AppTheme = 'dark' | 'light';
 export type AppLanguage = 'en' | 'es';
+export type FontSize = 'small' | 'medium' | 'large';
 
 export interface Exercise {
   id?: number;

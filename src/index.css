@@ -42,9 +42,48 @@ html.dark,
   --radius-lg: 16px;
   --radius-full: 9999px;
 
+  /* Font Size Design Tokens (Default: Small) */
+  --font-scale: 1;
+  --text-h1: 24px;
+  --text-h2: 20px;
+  --text-h3: 16px;
+  --text-body: 14px;
+  --text-caption: 12px;
+  --text-label: 11px;
+  --input-font-size: 14px;
+  --btn-font-size: 14px;
+
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   color-scheme: dark;
+}
+
+/* Medium Font Size Scale (~1.12x) */
+html.font-medium,
+[data-font-size="medium"] {
+  --font-scale: 1.12;
+  --text-h1: 26px;
+  --text-h2: 22px;
+  --text-h3: 17.5px;
+  --text-body: 15.5px;
+  --text-caption: 13.5px;
+  --text-label: 12px;
+  --input-font-size: 15px;
+  --btn-font-size: 15px;
+}
+
+/* Large Font Size Scale (~1.25x) */
+html.font-large,
+[data-font-size="large"] {
+  --font-scale: 1.25;
+  --text-h1: 28px;
+  --text-h2: 24px;
+  --text-h3: 19px;
+  --text-body: 17px;
+  --text-caption: 14.5px;
+  --text-label: 13px;
+  --input-font-size: 16px;
+  --btn-font-size: 16px;
 }
 
 html.light,
@@ -115,6 +154,7 @@ body {
   font-family: var(--font-body);
   background-color: var(--bg-main);
   color: var(--text-primary);
+  font-size: var(--text-body);
   min-height: 100vh;
   min-height: 100dvh;
   overflow-x: clip;
