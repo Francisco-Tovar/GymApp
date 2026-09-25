@@ -47,7 +47,7 @@ export const HistoryScreen: React.FC = () => {
   const [viewMode, setViewMode] = useState<'analytics' | 'logs'>('analytics');
   const [analyticsType, setAnalyticsType] = useState<'routine' | 'exercise'>('routine');
   const [loading, setLoading] = useState(true);
-  const [expandedSessionId, setExpandedSessionId] = useState<number | null>(null);
+  const [expandedSessionIds, setExpandedSessionIds] = useState<Set<number>>(new Set());
   const [sessionSetsMap, setSessionSetsMap] = useState<Record<number, SessionSet[]>>({});
   const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
   const [showClearAllModal, setShowClearAllModal] = useState(false);
@@ -78,20 +78,52 @@ export const HistoryScreen: React.FC = () => {
   }, [unit, selectedWorkoutId]);
 
   const toggleExpand = async (sessionId: number) => {
-    if (expandedSessionId === sessionId) {
-      setExpandedSessionId(null);
-      return;
-    }
-
-    setExpandedSessionId(sessionId);
-    if (!sessionSetsMap[sessionId]) {
-      try {
-        const details = await fetchSessionSetsDetail(sessionId);
-        setSessionSetsMap((prev) => ({ ...prev, [sessionId]: details }));
-      } catch (err) {
-        console.error('Failed to load set details:', err);
+    const next = new Set(expandedSessionIds);
+    if (next.has(sessionId)) {
+      next.delete(sessionId);
+    } else {
+      next.add(sessionId);
+      if (!sessionSetsMap[sessionId]) {
+        try {
+          const details = await fetchSessionSetsDetail(sessionId);
+          setSessionSetsMap((prev) => ({ ...prev, [sessionId]: details }));
+        } catch (err) {
+          console.error('Failed to load set details:', err);
+        }
       }
     }
+    setExpandedSessionIds(next);
+  };
+
+  const expandAll = async () => {
+    const allIds = new Set(sessions.map((s) => s.id));
+    setExpandedSessionIds(allIds);
+
+    // Fetch details for any sessions not yet loaded
+    const missingIds = sessions.map((s) => s.id).filter((id) => !sessionSetsMap[id]);
+    if (missingIds.length > 0) {
+      try {
+        const detailsList = await Promise.all(
+          missingIds.map(async (id) => {
+            const sets = await fetchSessionSetsDetail(id);
+            return { id, sets };
+          })
+        );
+        setSessionSetsMap((prev) => {
+          const updated = { ...prev };
+          detailsList.forEach(({ id, sets }) => {
+            updated[id] = sets;
+          });
+          return updated;
+        });
+      } catch (err) {
+        console.error('Failed to batch load set details:', err);
+      }
+    }
+  };
+
+  const collapseAll = () => {
+    setExpandedSessionIds(new Set());
   };
 
   const confirmDelete = async () => {
@@ -110,7 +142,7 @@ export const HistoryScreen: React.FC = () => {
       setIsClearingAll(true);
       await clearAllSessions();
       setShowClearAllModal(false);
-      setExpandedSessionId(null);
+      setExpandedSessionIds(new Set());
       setSessionSetsMap({});
       await loadHistory();
     } catch (err) {
@@ -132,8 +164,10 @@ export const HistoryScreen: React.FC = () => {
     });
   };
 
+  const allExpanded = sessions.length > 0 && expandedSessionIds.size === sessions.length;
+
   return (
-    <div className="animate-fade-in">
+    <div className="animate-fade-in" style={{ paddingBottom: '32px' }}>
       {/* Header */}
       <div style={{ marginBottom: '16px' }}>
         <Typography variant="h1">{t('workout_history', language)}</Typography>
@@ -322,7 +356,7 @@ export const HistoryScreen: React.FC = () => {
             <div style={{ display: 'flex', gap: '6px' }}>
               <button
                 type="button"
-                onClick={() => setExpandedSessionId(null)}
+                onClick={allExpanded ? collapseAll : expandAll}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
@@ -330,15 +364,16 @@ export const HistoryScreen: React.FC = () => {
                   backgroundColor: 'var(--bg-surface)',
                   border: '1px solid var(--border-color)',
                   borderRadius: 'var(--radius-sm)',
-                  padding: '4px 8px',
+                  padding: '5px 10px',
                   color: 'var(--text-secondary)',
-                  fontSize: '11px',
+                  fontSize: '12px',
                   fontWeight: 600,
                   cursor: 'pointer',
+                  transition: 'all 0.15s ease',
                 }}
               >
-                <FolderMinus size={13} />
-                <span>{t('collapse_all', language)}</span>
+                {allExpanded ? <FolderMinus size={14} /> : <FolderPlus size={14} />}
+                <span>{allExpanded ? t('collapse_all', language) : t('expand_all', language)}</span>
               </button>
             </div>
           </div>
@@ -346,7 +381,7 @@ export const HistoryScreen: React.FC = () => {
           {/* Session Cards (Collapsible) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             {sessions.map((s) => {
-              const isExpanded = expandedSessionId === s.id;
+              const isExpanded = expandedSessionIds.has(s.id);
               const sets = sessionSetsMap[s.id] || [];
 
               // Group sets by exercise
@@ -478,12 +513,13 @@ export const HistoryScreen: React.FC = () => {
             })}
           </div>
 
-          {/* Bottom Delete All Button */}
+          {/* Bottom Delete All Button with extra bottom clearance */}
           {sessions.length > 0 && (
             <div
               style={{
-                marginTop: '16px',
-                paddingTop: '16px',
+                marginTop: '20px',
+                paddingTop: '20px',
+                paddingBottom: '36px',
                 borderTop: '1px solid var(--border-color)',
                 display: 'flex',
                 justifyContent: 'center',
@@ -496,15 +532,16 @@ export const HistoryScreen: React.FC = () => {
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '8px',
-                  padding: '10px 18px',
+                  padding: '12px 24px',
                   backgroundColor: 'rgba(239, 68, 68, 0.12)',
                   border: '1px solid rgba(239, 68, 68, 0.35)',
                   borderRadius: 'var(--radius-md)',
                   color: 'var(--danger)',
-                  fontSize: '13px',
+                  fontSize: '14px',
                   fontWeight: 700,
                   cursor: 'pointer',
                   transition: 'all 0.2s ease',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.15)',
                 }}
                 onMouseEnter={(e) => {
                   e.currentTarget.style.backgroundColor = 'var(--danger)';
