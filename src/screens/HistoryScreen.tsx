@@ -26,6 +26,7 @@ import {
   Trash2,
   ChevronDown,
   ChevronRight,
+  ChevronLeft,
   History,
   CheckCircle2,
   TrendingUp,
@@ -36,6 +37,8 @@ import {
   FolderMinus,
   FolderPlus,
 } from 'lucide-react';
+
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 
 export const HistoryScreen: React.FC = () => {
   const { unit, language } = useSettingsStore();
@@ -52,6 +55,10 @@ export const HistoryScreen: React.FC = () => {
   const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
   const [showClearAllModal, setShowClearAllModal] = useState(false);
   const [isClearingAll, setIsClearingAll] = useState(false);
+
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const loadHistory = async () => {
     try {
@@ -77,6 +84,18 @@ export const HistoryScreen: React.FC = () => {
     loadHistory();
   }, [unit, selectedWorkoutId]);
 
+  // Pagination calculations
+  const totalPages = Math.max(1, Math.ceil(sessions.length / pageSize));
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = (safeCurrentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, sessions.length);
+  const paginatedSessions = sessions.slice(startIndex, endIndex);
+
+  const handlePageSizeChange = (newSize: number) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+  };
+
   const toggleExpand = async (sessionId: number) => {
     const next = new Set(expandedSessionIds);
     if (next.has(sessionId)) {
@@ -95,12 +114,13 @@ export const HistoryScreen: React.FC = () => {
     setExpandedSessionIds(next);
   };
 
-  const expandAll = async () => {
-    const allIds = new Set(sessions.map((s) => s.id));
-    setExpandedSessionIds(allIds);
+  // Expand all on current page
+  const expandPage = async () => {
+    const next = new Set(expandedSessionIds);
+    paginatedSessions.forEach((s) => next.add(s.id));
+    setExpandedSessionIds(next);
 
-    // Fetch details for any sessions not yet loaded
-    const missingIds = sessions.map((s) => s.id).filter((id) => !sessionSetsMap[id]);
+    const missingIds = paginatedSessions.map((s) => s.id).filter((id) => !sessionSetsMap[id]);
     if (missingIds.length > 0) {
       try {
         const detailsList = await Promise.all(
@@ -122,8 +142,11 @@ export const HistoryScreen: React.FC = () => {
     }
   };
 
-  const collapseAll = () => {
-    setExpandedSessionIds(new Set());
+  // Collapse all on current page
+  const collapsePage = () => {
+    const next = new Set(expandedSessionIds);
+    paginatedSessions.forEach((s) => next.delete(s.id));
+    setExpandedSessionIds(next);
   };
 
   const confirmDelete = async () => {
@@ -144,6 +167,7 @@ export const HistoryScreen: React.FC = () => {
       setShowClearAllModal(false);
       setExpandedSessionIds(new Set());
       setSessionSetsMap({});
+      setCurrentPage(1);
       await loadHistory();
     } catch (err) {
       console.error('Failed to clear all sessions:', err);
@@ -164,7 +188,9 @@ export const HistoryScreen: React.FC = () => {
     });
   };
 
-  const allExpanded = sessions.length > 0 && expandedSessionIds.size === sessions.length;
+  const pageAllExpanded =
+    paginatedSessions.length > 0 &&
+    paginatedSessions.every((s) => expandedSessionIds.has(s.id));
 
   return (
     <div className="animate-fade-in" style={{ paddingBottom: '32px' }}>
@@ -340,47 +366,93 @@ export const HistoryScreen: React.FC = () => {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* Top toolbar for Logs list */}
+          {/* Top toolbar: Pagination range, Page Size pills, and Expand/Collapse */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              padding: '0 2px',
+              padding: '8px 12px',
+              backgroundColor: 'var(--bg-surface)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-md)',
+              flexWrap: 'wrap',
+              gap: '10px',
             }}
           >
-            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
-              {sessions.length} {language === 'es' ? 'sesiones registradas' : 'logged sessions'}
+            {/* Showing Range */}
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+              {t('showing', language)} <strong style={{ color: 'var(--text-primary)' }}>{sessions.length > 0 ? startIndex + 1 : 0}–{endIndex}</strong> {t('of', language)} <strong style={{ color: 'var(--text-primary)' }}>{sessions.length}</strong>
             </span>
 
-            <div style={{ display: 'flex', gap: '6px' }}>
+            {/* Right side controls: Page size pills + Collapse/Expand */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              {/* Page size pills */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                  {t('per_page', language)}:
+                </span>
+                <div
+                  style={{
+                    display: 'inline-flex',
+                    backgroundColor: 'var(--bg-main)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '2px',
+                    border: '1px solid var(--border-color)',
+                    gap: '2px',
+                  }}
+                >
+                  {PAGE_SIZE_OPTIONS.map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => handlePageSizeChange(size)}
+                      style={{
+                        background: pageSize === size ? 'var(--primary)' : 'transparent',
+                        color: pageSize === size ? '#ffffff' : 'var(--text-muted)',
+                        border: 'none',
+                        borderRadius: '4px',
+                        padding: '2px 8px',
+                        fontSize: '11px',
+                        fontWeight: pageSize === size ? 700 : 500,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Expand / Collapse Button */}
               <button
                 type="button"
-                onClick={allExpanded ? collapseAll : expandAll}
+                onClick={pageAllExpanded ? collapsePage : expandPage}
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   gap: '4px',
-                  backgroundColor: 'var(--bg-surface)',
+                  backgroundColor: 'var(--bg-main)',
                   border: '1px solid var(--border-color)',
                   borderRadius: 'var(--radius-sm)',
-                  padding: '5px 10px',
+                  padding: '4px 10px',
                   color: 'var(--text-secondary)',
-                  fontSize: '12px',
+                  fontSize: '11px',
                   fontWeight: 600,
                   cursor: 'pointer',
                   transition: 'all 0.15s ease',
                 }}
               >
-                {allExpanded ? <FolderMinus size={14} /> : <FolderPlus size={14} />}
-                <span>{allExpanded ? t('collapse_all', language) : t('expand_all', language)}</span>
+                {pageAllExpanded ? <FolderMinus size={13} /> : <FolderPlus size={13} />}
+                <span>{pageAllExpanded ? t('collapse_all', language) : t('expand_all', language)}</span>
               </button>
             </div>
           </div>
 
-          {/* Session Cards (Collapsible) */}
+          {/* Paginated Session Cards (Collapsible) */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {sessions.map((s) => {
+            {paginatedSessions.map((s) => {
               const isExpanded = expandedSessionIds.has(s.id);
               const sets = sessionSetsMap[s.id] || [];
 
@@ -512,6 +584,64 @@ export const HistoryScreen: React.FC = () => {
               );
             })}
           </div>
+
+          {/* Bottom Pagination Controls */}
+          {totalPages > 1 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '10px 14px',
+                backgroundColor: 'var(--bg-surface)',
+                border: '1px solid var(--border-color)',
+                borderRadius: 'var(--radius-md)',
+                marginTop: '4px',
+              }}
+            >
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                disabled={safeCurrentPage <= 1}
+                onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  opacity: safeCurrentPage <= 1 ? 0.4 : 1,
+                  cursor: safeCurrentPage <= 1 ? 'not-allowed' : 'pointer',
+                }}
+              >
+                <ChevronLeft size={16} />
+                {language === 'es' ? 'Anterior' : 'Previous'}
+              </button>
+
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                {t('page', language)} {safeCurrentPage} {t('of', language)} {totalPages}
+              </span>
+
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                disabled={safeCurrentPage >= totalPages}
+                onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  padding: '6px 12px',
+                  fontSize: '12px',
+                  opacity: safeCurrentPage >= totalPages ? 0.4 : 1,
+                  cursor: safeCurrentPage >= totalPages ? 'not-allowed' : 'pointer',
+                }}
+              >
+                {language === 'es' ? 'Siguiente' : 'Next'}
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
 
           {/* Bottom Delete All Button with extra bottom clearance */}
           {sessions.length > 0 && (
