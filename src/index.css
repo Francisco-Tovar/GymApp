@@ -599,3 +599,60 @@ option:checked, option:hover {
   color: #ffffff !important;
 }
 
+/* Global Font Size Scaling Rules for all text elements & controls */
+html.font-medium,
+[data-font-size="medium"] {
+  font-size: 17.5px;
+}
+
+html.font-large,
+[data-font-size="large"] {
+  font-size: 19.5px;
+}
+
+html.font-medium button,
+html.font-medium input,
+html.font-medium select,
+html.font-medium textarea,
+[data-font-size="medium"] button,
+[data-font-size="medium"] input,
+[data-font-size="medium"] select,
+[data-font-size="medium"] textarea {
+  font-size: calc(1em * 1.08);
+}
+
+html.font-large button,
+html.font-large input,
+html.font-large select,
+html.font-large textarea,
+[data-font-size="large"] button,
+[data-font-size="large"] input,
+[data-font-size="large"] select,
+[data-font-size="large"] textarea {
+  font-size: calc(1em * 1.18);
+}
+
+/* Ensure all inline styled font-sizes scale seamlessly when medium/large is active */
+html.font-medium [style*="font-size"],
+[data-font-size="medium"] [style*="font-size"] {
+  zoom: 1.08;
+}
+
+html.font-large [style*="font-size"],
+[data-font-size="large"] [style*="font-size"] {
+  zoom: 1.18;
+}
+
+/* Exclude charts / canvas / svg from text zoom to prevent coordinate distortion */
+html.font-medium svg [style*="font-size"],
+html.font-large svg [style*="font-size"],
+html.font-medium canvas,
+html.font-large canvas,
+[data-font-size="medium"] svg [style*="font-size"],
+[data-font-size="large"] svg [style*="font-size"],
+[data-font-size="medium"] canvas,
+[data-font-size="large"] canvas {
+  zoom: 1;
+}
+
+
