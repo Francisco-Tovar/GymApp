@@ -3,6 +3,7 @@ import { Session, SessionSet, Workout } from '../types';
 import {
   fetchSessionsHistory,
   deleteSession,
+  clearAllSessions,
   fetchSessionSetsDetail,
   fetchAllWorkoutSessionRecords,
   fetchRoutineSessionRecords,
@@ -20,7 +21,21 @@ import { ProgressiveOverloadChart } from '../components/organisms/ProgressiveOve
 import { RoutineProgressionChart } from '../components/organisms/RoutineProgressionChart';
 import { WorkoutSessionRecord } from '../utils/progressiveOverload';
 import { RoutineSessionRecord } from '../utils/routineProgression';
-import { Calendar, Trash2, ChevronDown, ChevronRight, History, CheckCircle2, TrendingUp, ListFilter, Layers, BarChart2 } from 'lucide-react';
+import {
+  Calendar,
+  Trash2,
+  ChevronDown,
+  ChevronRight,
+  History,
+  CheckCircle2,
+  TrendingUp,
+  ListFilter,
+  Layers,
+  BarChart2,
+  AlertTriangle,
+  FolderMinus,
+  FolderPlus,
+} from 'lucide-react';
 
 export const HistoryScreen: React.FC = () => {
   const { unit, language } = useSettingsStore();
@@ -35,6 +50,8 @@ export const HistoryScreen: React.FC = () => {
   const [expandedSessionId, setExpandedSessionId] = useState<number | null>(null);
   const [sessionSetsMap, setSessionSetsMap] = useState<Record<number, SessionSet[]>>({});
   const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
+  const [showClearAllModal, setShowClearAllModal] = useState(false);
+  const [isClearingAll, setIsClearingAll] = useState(false);
 
   const loadHistory = async () => {
     try {
@@ -59,7 +76,6 @@ export const HistoryScreen: React.FC = () => {
   useEffect(() => {
     loadHistory();
   }, [unit, selectedWorkoutId]);
-
 
   const toggleExpand = async (sessionId: number) => {
     if (expandedSessionId === sessionId) {
@@ -86,6 +102,21 @@ export const HistoryScreen: React.FC = () => {
       await loadHistory();
     } catch (err) {
       console.error('Failed to delete session:', err);
+    }
+  };
+
+  const handleConfirmClearAll = async () => {
+    try {
+      setIsClearingAll(true);
+      await clearAllSessions();
+      setShowClearAllModal(false);
+      setExpandedSessionId(null);
+      setSessionSetsMap({});
+      await loadHistory();
+    } catch (err) {
+      console.error('Failed to clear all sessions:', err);
+    } finally {
+      setIsClearingAll(false);
     }
   };
 
@@ -274,133 +305,225 @@ export const HistoryScreen: React.FC = () => {
           </Typography>
         </div>
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-          {sessions.map((s) => {
-            const isExpanded = expandedSessionId === s.id;
-            const sets = sessionSetsMap[s.id] || [];
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+          {/* Top toolbar for Logs list */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '0 2px',
+            }}
+          >
+            <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>
+              {sessions.length} {language === 'es' ? 'sesiones registradas' : 'logged sessions'}
+            </span>
 
-            // Group sets by exercise
-            const grouped = sets.reduce((acc, setItem) => {
-              const name = setItem.exercise_name || `Exercise #${setItem.exercise_id}`;
-              if (!acc[name]) acc[name] = [];
-              acc[name].push(setItem);
-              return acc;
-            }, {} as Record<string, SessionSet[]>);
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <button
+                type="button"
+                onClick={() => setExpandedSessionId(null)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  backgroundColor: 'var(--bg-surface)',
+                  border: '1px solid var(--border-color)',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '4px 8px',
+                  color: 'var(--text-secondary)',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                <FolderMinus size={13} />
+                <span>{t('collapse_all', language)}</span>
+              </button>
+            </div>
+          </div>
 
-            return (
-              <Card key={s.id} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div
-                  onClick={() => toggleExpand(s.id)}
+          {/* Session Cards (Collapsible) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            {sessions.map((s) => {
+              const isExpanded = expandedSessionId === s.id;
+              const sets = sessionSetsMap[s.id] || [];
+
+              // Group sets by exercise
+              const grouped = sets.reduce((acc, setItem) => {
+                const name = setItem.exercise_name || `Exercise #${setItem.exercise_id}`;
+                if (!acc[name]) acc[name] = [];
+                acc[name].push(setItem);
+                return acc;
+              }, {} as Record<string, SessionSet[]>);
+
+              return (
+                <Card
+                  key={s.id}
                   style={{
                     display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    cursor: 'pointer',
+                    flexDirection: 'column',
+                    gap: '8px',
+                    transition: 'border-color 0.15s ease',
                   }}
                 >
-                  <div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <CheckCircle2 size={16} color="var(--success)" />
-                      <Typography variant="h3" style={{ fontSize: '16px' }}>
-                        {s.workout_name}
-                      </Typography>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                      <Calendar size={12} color="var(--text-muted)" />
-                      <Typography variant="caption" color="var(--text-muted)">
-                        {formatDate(s.date)}
-                      </Typography>
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Badge variant="primary">{s.total_sets || 0} {t('sets', language)}</Badge>
-                    <span style={{ color: 'var(--text-muted)' }}>
-                      {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Expanded Session Sets Details */}
-                {isExpanded && (
                   <div
+                    onClick={() => toggleExpand(s.id)}
                     style={{
-                      marginTop: '10px',
-                      paddingTop: '10px',
-                      borderTop: '1px solid var(--border-color)',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'flex-start',
+                      cursor: 'pointer',
+                      userSelect: 'none',
                     }}
                   >
-                    {sets.length === 0 ? (
-                      <Typography variant="caption" color="var(--text-muted)">
-                        {language === 'es' ? 'Cargando detalle de ejercicios...' : 'Loading exercise breakdown...'}
-                      </Typography>
-                    ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                        {Object.entries(grouped).map(([exName, exSets]) => (
-                          <div
-                            key={exName}
-                            style={{
-                              backgroundColor: 'var(--bg-main)',
-                              borderRadius: 'var(--radius-sm)',
-                              padding: '10px 12px',
-                              border: '1px solid var(--border-color)',
-                            }}
-                          >
-                            <Typography variant="h3" style={{ fontSize: '13px', color: 'var(--accent)', marginBottom: '6px' }}>
-                              {exName}
-                            </Typography>
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                              {exSets.map((setItem, idx) => {
-                                const convertedWeight = convertWeight(setItem.weight, setItem.unit || 'lb', unit);
-                                return (
-                                  <div
-                                    key={idx}
-                                    style={{
-                                      display: 'flex',
-                                      justifyContent: 'space-between',
-                                      fontSize: '12px',
-                                      color: 'var(--text-secondary)',
-                                      padding: '2px 0',
-                                    }}
-                                  >
-                                    <span style={{ color: 'var(--text-muted)' }}>
-                                      {language === 'es' ? 'Serie' : 'Set'} {setItem.set_number}
-                                    </span>
-                                    <span style={{ fontWeight: 600 }}>
-                                      {convertedWeight} {unit} × {setItem.reps} reps
-                                    </span>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        ))}
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <CheckCircle2 size={16} color="var(--success)" />
+                        <Typography variant="h3" style={{ fontSize: '16px' }}>
+                          {s.workout_name}
+                        </Typography>
                       </div>
-                    )}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                        <Calendar size={12} color="var(--text-muted)" />
+                        <Typography variant="caption" color="var(--text-muted)">
+                          {formatDate(s.date)}
+                        </Typography>
+                      </div>
+                    </div>
 
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSessionToDelete(s);
-                        }}
-                        className="btn btn-danger btn-sm"
-                        style={{ padding: '6px 12px' }}
-                      >
-                        <Trash2 size={14} />
-                        <span>{language === 'es' ? 'Eliminar Registro' : 'Delete Log'}</span>
-                      </button>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Badge variant="primary">{s.total_sets || 0} {t('sets', language)}</Badge>
+                      <span style={{ color: 'var(--text-muted)' }}>
+                        {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
+                      </span>
                     </div>
                   </div>
-                )}
-              </Card>
-            );
-          })}
+
+                  {/* Expanded Session Sets Details */}
+                  {isExpanded && (
+                    <div
+                      style={{
+                        marginTop: '10px',
+                        paddingTop: '10px',
+                        borderTop: '1px solid var(--border-color)',
+                      }}
+                    >
+                      {sets.length === 0 ? (
+                        <Typography variant="caption" color="var(--text-muted)">
+                          {language === 'es' ? 'Cargando detalle de ejercicios...' : 'Loading exercise breakdown...'}
+                        </Typography>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          {Object.entries(grouped).map(([exName, exSets]) => (
+                            <div
+                              key={exName}
+                              style={{
+                                backgroundColor: 'var(--bg-main)',
+                                borderRadius: 'var(--radius-sm)',
+                                padding: '10px 12px',
+                                border: '1px solid var(--border-color)',
+                              }}
+                            >
+                              <Typography variant="h3" style={{ fontSize: '13px', color: 'var(--accent)', marginBottom: '6px' }}>
+                                {exName}
+                              </Typography>
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                {exSets.map((setItem, idx) => {
+                                  const convertedWeight = convertWeight(setItem.weight, setItem.unit || 'lb', unit);
+                                  return (
+                                    <div
+                                      key={idx}
+                                      style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        fontSize: '12px',
+                                        color: 'var(--text-secondary)',
+                                        padding: '2px 0',
+                                      }}
+                                    >
+                                      <span style={{ color: 'var(--text-muted)' }}>
+                                        {language === 'es' ? 'Serie' : 'Set'} {setItem.set_number}
+                                      </span>
+                                      <span style={{ fontWeight: 600 }}>
+                                        {convertedWeight} {unit} × {setItem.reps} reps
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSessionToDelete(s);
+                          }}
+                          className="btn btn-danger btn-sm"
+                          style={{ padding: '6px 12px' }}
+                        >
+                          <Trash2 size={14} />
+                          <span>{language === 'es' ? 'Eliminar Registro' : 'Delete Log'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
+
+          {/* Bottom Delete All Button */}
+          {sessions.length > 0 && (
+            <div
+              style={{
+                marginTop: '16px',
+                paddingTop: '16px',
+                borderTop: '1px solid var(--border-color)',
+                display: 'flex',
+                justifyContent: 'center',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setShowClearAllModal(true)}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '10px 18px',
+                  backgroundColor: 'rgba(239, 68, 68, 0.12)',
+                  border: '1px solid rgba(239, 68, 68, 0.35)',
+                  borderRadius: 'var(--radius-md)',
+                  color: 'var(--danger)',
+                  fontSize: '13px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'var(--danger)';
+                  e.currentTarget.style.color = '#ffffff';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.12)';
+                  e.currentTarget.style.color = 'var(--danger)';
+                }}
+              >
+                <Trash2 size={16} />
+                <span>{t('clear_all_history', language)}</span>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Single Session Confirmation Modal */}
       <Modal
         isOpen={Boolean(sessionToDelete)}
         onClose={() => setSessionToDelete(null)}
@@ -424,6 +547,61 @@ export const HistoryScreen: React.FC = () => {
           </Button>
         </div>
       </Modal>
+
+      {/* Clear All Sessions Confirmation Modal */}
+      <Modal
+        isOpen={showClearAllModal}
+        onClose={() => !isClearingAll && setShowClearAllModal(false)}
+        position="center"
+        maxWidth="440px"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div
+              style={{
+                width: '36px',
+                height: '36px',
+                borderRadius: '50%',
+                backgroundColor: 'rgba(239, 68, 68, 0.15)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--danger)',
+                flexShrink: 0,
+              }}
+            >
+              <AlertTriangle size={20} />
+            </div>
+            <Typography variant="h2" style={{ fontSize: '18px', fontWeight: 800 }}>
+              {t('clear_all_history_title', language)}
+            </Typography>
+          </div>
+
+          <Typography variant="body" color="var(--text-secondary)" style={{ fontSize: '13px', lineHeight: 1.5 }}>
+            {t('clear_all_history_desc', language)}
+          </Typography>
+
+          <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+            <Button
+              variant="secondary"
+              onClick={() => setShowClearAllModal(false)}
+              disabled={isClearingAll}
+              style={{ flex: 1 }}
+            >
+              {t('cancel', language)}
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleConfirmClearAll}
+              disabled={isClearingAll}
+              style={{ flex: 1 }}
+            >
+              {isClearingAll ? t('loading', language) : t('clear_all_history', language)}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };
+

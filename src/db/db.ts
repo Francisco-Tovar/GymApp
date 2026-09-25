@@ -646,6 +646,14 @@ export const deleteSession = async (id: number): Promise<void> => {
   });
 };
 
+export const clearAllSessions = async (): Promise<void> => {
+  await db.transaction('rw', db.sessions, db.session_sets, async () => {
+    await db.session_sets.clear();
+    await db.sessions.clear();
+  });
+};
+
+
 export const fetchSessionsHistory = async (): Promise<Session[]> => {
   const sessions = await db.sessions.orderBy('date').reverse().toArray();
   const result: Session[] = [];

@@ -122,6 +122,11 @@ export const TRANSLATIONS = {
     routines: 'Routines',
     no_completed_sessions: 'No Completed Sessions',
     first_workout_prompt: 'Complete your first workout routine to view training logs and progress here.',
+    clear_all_history: 'Clear All History',
+    clear_all_history_title: 'Delete All Workout Logs?',
+    clear_all_history_desc: 'Are you sure you want to permanently delete all recorded workout sessions and set logs? This cannot be undone.',
+    collapse_all: 'Collapse All',
+    expand_all: 'Expand All',
 
     // Progressive Overload & Charts
     routine_progression_overload: 'Routine Progression Overload',
@@ -359,6 +364,11 @@ export const TRANSLATIONS = {
     routines: 'Rutinas',
     no_completed_sessions: 'Sin Sesiones Completadas',
     first_workout_prompt: 'Completa tu primer entrenamiento para visualizar tus registros y progreso aquí.',
+    clear_all_history: 'Borrar Todo el Historial',
+    clear_all_history_title: '¿Eliminar todos los registros de entrenamiento?',
+    clear_all_history_desc: '¿Estás seguro de que deseas eliminar permanentemente todas las sesiones y series registradas? Esta acción no se puede deshacer.',
+    collapse_all: 'Contraer Todo',
+    expand_all: 'Expandir Todo',
 
     // Progressive Overload & Charts
     routine_progression_overload: 'Sobrecarga Progresiva de Rutina',
