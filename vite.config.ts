@@ -16,7 +16,7 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg', 'icons/*.png'],
+      includeAssets: ['favicon.ico', 'favicon.svg', 'apple-touch-icon.png', 'icons/*.png', 'icons/*.svg'],
       manifest: {
         name: 'GymApp - Workout Tracker & Logger',
         short_name: 'GymApp',
@@ -25,22 +25,26 @@ export default defineConfig({
         background_color: '#0F172A',
         display: 'standalone',
         orientation: 'portrait',
+        start_url: './',
+        scope: './',
         icons: [
           {
-            src: '/icons/icon-192x192.png',
+            src: 'icons/icon-192x192.png',
             sizes: '192x192',
             type: 'image/png',
+            purpose: 'any',
           },
           {
-            src: '/icons/icon-512x512.png',
+            src: 'icons/icon-512x512.png',
             sizes: '512x512',
             type: 'image/png',
+            purpose: 'any',
           },
           {
-            src: '/icons/icon-512x512.png',
+            src: 'icons/maskable-icon-512x512.png',
             sizes: '512x512',
             type: 'image/png',
-            purpose: 'any maskable',
+            purpose: 'maskable',
           },
         ],
       },
