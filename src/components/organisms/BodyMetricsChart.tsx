@@ -6,7 +6,7 @@ import { useSettingsStore } from '../../store/useSettingsStore';
 import { t } from '../../utils/i18n';
 import { Typography } from '../atoms/Typography';
 import { Badge } from '../atoms/Badge';
-import { TrendingDown, TrendingUp, Scale, Calendar, CheckSquare, Square, X } from 'lucide-react';
+import { TrendingDown, TrendingUp, Scale, Calendar, CheckSquare, Square, X, Plus } from 'lucide-react';
 
 export interface BodyMetricsChartProps {
   logs: BodyMetricLog[];
@@ -455,8 +455,19 @@ export const BodyMetricsChart: React.FC<BodyMetricsChartProps> = ({
           {t('log_first_weight', language)}
         </Typography>
         {onAddLogClick && (
-          <button type="button" className="btn btn-primary" onClick={onAddLogClick}>
-            {t('log_weight', language)}
+          <button
+            type="button"
+            className="btn btn-primary btn-md"
+            onClick={onAddLogClick}
+            style={{
+              padding: '10px 22px',
+              fontSize: '14px',
+              fontWeight: 700,
+              gap: '6px',
+            }}
+          >
+            <Plus size={16} />
+            <span>{t('log_weight', language)}</span>
           </button>
         )}
       </div>
