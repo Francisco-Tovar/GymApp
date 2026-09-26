@@ -11,8 +11,9 @@ import { Modal } from '../components/atoms/Modal';
 import { ActiveSetLogger } from '../components/organisms/ActiveSetLogger';
 import { ExerciseGuideModal } from '../components/organisms/ExerciseGuideModal';
 import { BodyMuscleMap } from '../components/organisms/BodyMuscleMap';
-import { requestWakeLock, releaseWakeLock, triggerVibration } from '../utils/hardwareApis';
-import { ArrowLeft, Clock, Timer, Check, CheckCircle2, AlertTriangle, ShieldCheck, RefreshCw, Trophy } from 'lucide-react';
+import { ShareWorkoutModal } from '../components/organisms/ShareWorkoutModal';
+import { requestWakeLock, releaseWakeLock, triggerVibration, playTimerPing } from '../utils/hardwareApis';
+import { ArrowLeft, Clock, Timer, Check, CheckCircle2, AlertTriangle, ShieldCheck, RefreshCw, Trophy, Share2, MessageCircle } from 'lucide-react';
 
 interface ActiveSessionScreenProps {
   workoutId?: number | null;
@@ -51,6 +52,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
   const [loading, setLoading] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showFinishModal, setShowFinishModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [selectedGuideExercise, setSelectedGuideExercise] = useState<Exercise | null>(null);
 
@@ -105,6 +107,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
     if (restTimerSeconds === null) return;
 
     if (restTimerSeconds <= 0) {
+      playTimerPing();
       triggerVibration([300, 150, 300]);
       setRestTimerSeconds(null);
       return;
@@ -249,6 +252,35 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
     }
     setShowFinishModal(true);
   };
+
+  const currentValidSets: SessionSet[] = [];
+  exercises.forEach((ex) => {
+    const sets = exerciseSetsMap[ex.id as number] || [];
+    const isTimeBased = ex.exercise_type === 'time_based';
+    let idx = 1;
+    sets.forEach((setItem) => {
+      const weightNum = parseFloat(setItem.weight) || 0;
+      const repsNum = parseInt(setItem.reps, 10) || 0;
+      const durationSecs =
+        (parseInt(setItem.durationMinutes || '0', 10) || 0) * 60 +
+        (parseInt(setItem.durationSeconds || '0', 10) || 0);
+
+      const isValid = isTimeBased ? durationSecs > 0 : (weightNum > 0 && repsNum > 0);
+      if (!isValid) return;
+
+      currentValidSets.push({
+        exercise_id: ex.id as number,
+        exercise_name: ex.name,
+        set_number: idx++,
+        weight: weightNum,
+        reps: repsNum,
+        unit: activeUnit,
+        exercise_type: ex.exercise_type || 'weight_reps',
+        duration_seconds: durationSecs,
+        notes: setItem.notes?.trim() || null,
+      });
+    });
+  });
 
   return (
     <div className="animate-fade-in" style={{ paddingBottom: '40px' }}>
@@ -507,7 +539,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
             padding: '12px',
             borderRadius: 'var(--radius-md)',
             border: '1px solid var(--border-color)',
-            marginBottom: '20px',
+            marginBottom: '16px',
             textAlign: 'center',
           }}
         >
@@ -537,19 +569,42 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <Button variant="secondary" onClick={() => setShowFinishModal(false)} style={{ flex: 1 }}>
-            {t('keep_going', language)}
-          </Button>
-          <Button
-            variant="success"
-            onClick={handleFinish}
-            disabled={loading}
-            leftIcon={<Check size={16} />}
-            style={{ flex: 1.3 }}
+        {/* Modal Action Buttons */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <Button variant="secondary" onClick={() => setShowFinishModal(false)} style={{ flex: 1 }}>
+              {t('keep_going', language)}
+            </Button>
+            <Button
+              variant="success"
+              onClick={handleFinish}
+              disabled={loading}
+              leftIcon={<Check size={16} />}
+              style={{ flex: 1.3 }}
+            >
+              {loading ? t('saving', language) : t('confirm_finish', language)}
+            </Button>
+          </div>
+
+          <button
+            type="button"
+            onClick={() => setShowShareModal(true)}
+            className="btn btn-secondary btn-sm"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
+              backgroundColor: 'rgba(37, 211, 102, 0.12)',
+              borderColor: 'rgba(37, 211, 102, 0.35)',
+              color: '#25D366',
+              fontWeight: 700,
+              padding: '8px 12px',
+            }}
           >
-            {loading ? t('saving', language) : t('confirm_finish', language)}
-          </Button>
+            <MessageCircle size={16} />
+            <span>{t('share_via_whatsapp', language)}</span>
+          </button>
         </div>
       </Modal>
 
@@ -582,6 +637,16 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
         isOpen={Boolean(selectedGuideExercise)}
         exercise={selectedGuideExercise}
         onClose={() => setSelectedGuideExercise(null)}
+      />
+
+      {/* Share Workout Modal */}
+      <ShareWorkoutModal
+        isOpen={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        workoutName={activeWorkoutName || 'Active Workout'}
+        date={new Date().toISOString()}
+        sets={currentValidSets}
+        unit={activeUnit}
       />
     </div>
   );

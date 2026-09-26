@@ -19,6 +19,7 @@ import { Badge } from '../components/atoms/Badge';
 import { Modal } from '../components/atoms/Modal';
 import { ProgressiveOverloadChart } from '../components/organisms/ProgressiveOverloadChart';
 import { RoutineProgressionChart } from '../components/organisms/RoutineProgressionChart';
+import { ShareWorkoutModal } from '../components/organisms/ShareWorkoutModal';
 import { WorkoutSessionRecord } from '../utils/progressiveOverload';
 import { RoutineSessionRecord } from '../utils/routineProgression';
 import {
@@ -36,6 +37,8 @@ import {
   AlertTriangle,
   FolderMinus,
   FolderPlus,
+  Share2,
+  MessageCircle,
 } from 'lucide-react';
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
@@ -53,12 +56,27 @@ export const HistoryScreen: React.FC = () => {
   const [expandedSessionIds, setExpandedSessionIds] = useState<Set<number>>(new Set());
   const [sessionSetsMap, setSessionSetsMap] = useState<Record<number, SessionSet[]>>({});
   const [sessionToDelete, setSessionToDelete] = useState<Session | null>(null);
+  const [sessionToShare, setSessionToShare] = useState<{ session: Session; sets: SessionSet[] } | null>(null);
   const [showClearAllModal, setShowClearAllModal] = useState(false);
   const [isClearingAll, setIsClearingAll] = useState(false);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  const handleOpenShare = async (s: Session) => {
+    let sets = sessionSetsMap[s.id];
+    if (!sets || sets.length === 0) {
+      try {
+        sets = await fetchSessionSetsDetail(s.id);
+        setSessionSetsMap((prev) => ({ ...prev, [s.id]: sets }));
+      } catch (err) {
+        console.error('Failed to load sets for share:', err);
+        sets = [];
+      }
+    }
+    setSessionToShare({ session: s, sets });
+  };
 
   const loadHistory = async () => {
     try {
@@ -500,6 +518,25 @@ export const HistoryScreen: React.FC = () => {
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenShare(s);
+                        }}
+                        className="btn btn-secondary btn-icon"
+                        style={{
+                          width: '28px',
+                          height: '28px',
+                          padding: 0,
+                          backgroundColor: 'rgba(37, 211, 102, 0.12)',
+                          borderColor: 'rgba(37, 211, 102, 0.35)',
+                          color: '#25D366',
+                        }}
+                        title={language === 'es' ? 'Compartir por WhatsApp' : 'Share via WhatsApp'}
+                      >
+                        <Share2 size={13} />
+                      </button>
                       <Badge variant="primary">{s.total_sets || 0} {t('sets', language)}</Badge>
                       <span style={{ color: 'var(--text-muted)' }}>
                         {isExpanded ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
@@ -595,7 +632,26 @@ export const HistoryScreen: React.FC = () => {
                         </div>
                       )}
 
-                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenShare(s);
+                          }}
+                          className="btn btn-secondary btn-sm"
+                          style={{
+                            padding: '6px 12px',
+                            backgroundColor: 'rgba(37, 211, 102, 0.12)',
+                            borderColor: 'rgba(37, 211, 102, 0.35)',
+                            color: '#25D366',
+                            fontWeight: 600,
+                          }}
+                        >
+                          <Share2 size={14} />
+                          <span>{t('share_workout', language)}</span>
+                        </button>
+
                         <button
                           type="button"
                           onClick={(e) => {
@@ -799,6 +855,18 @@ export const HistoryScreen: React.FC = () => {
           </div>
         </div>
       </Modal>
+
+      {/* Share Workout Modal */}
+      {sessionToShare && (
+        <ShareWorkoutModal
+          isOpen={Boolean(sessionToShare)}
+          onClose={() => setSessionToShare(null)}
+          workoutName={sessionToShare.session.workout_name}
+          date={sessionToShare.session.date}
+          sets={sessionToShare.sets}
+          unit={unit}
+        />
+      )}
     </div>
   );
 };
