@@ -27,6 +27,7 @@ export interface Session {
   workout_name?: string;
   date: string;
   total_sets?: number;
+  duration_seconds?: number;
 }
 
 export interface SessionSet {

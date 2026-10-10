@@ -863,6 +863,11 @@ export const HistoryScreen: React.FC = () => {
           onClose={() => setSessionToShare(null)}
           workoutName={sessionToShare.session.workout_name}
           date={sessionToShare.session.date}
+          durationSeconds={
+            sessionToShare.session.duration_seconds ||
+            sessionToShare.sets.reduce((sum, s) => sum + (s.duration_seconds || 0), 0) ||
+            undefined
+          }
           sets={sessionToShare.sets}
           unit={unit}
         />

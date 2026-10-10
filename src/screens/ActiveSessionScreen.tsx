@@ -198,7 +198,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
 
     try {
       setLoading(true);
-      await saveCompletedSession(activeWorkoutId, new Date().toISOString(), sessionSets);
+      await saveCompletedSession(activeWorkoutId, new Date().toISOString(), sessionSets, elapsedSeconds);
       triggerVibration([100, 100, 200]);
       showToast(t('workout_completed_toast', language), 'success', 4000);
       setShowFinishModal(false);
@@ -645,6 +645,7 @@ export const ActiveSessionScreen: React.FC<ActiveSessionScreenProps> = ({
         onClose={() => setShowShareModal(false)}
         workoutName={activeWorkoutName || 'Active Workout'}
         date={new Date().toISOString()}
+        durationSeconds={elapsedSeconds}
         sets={currentValidSets}
         unit={activeUnit}
       />

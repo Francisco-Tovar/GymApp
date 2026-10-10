@@ -19,6 +19,7 @@ interface ShareWorkoutModalProps {
   onClose: () => void;
   workoutName?: string;
   date: string;
+  durationSeconds?: number;
   sets: SessionSet[];
   unit: WeightUnit;
 }
@@ -28,6 +29,7 @@ export const ShareWorkoutModal: React.FC<ShareWorkoutModalProps> = ({
   onClose,
   workoutName,
   date,
+  durationSeconds,
   sets,
   unit,
 }) => {
@@ -38,7 +40,7 @@ export const ShareWorkoutModal: React.FC<ShareWorkoutModalProps> = ({
   if (!isOpen) return null;
 
   const shareText = generateWorkoutShareText(
-    { workout_name: workoutName, date },
+    { workout_name: workoutName, date, durationSeconds },
     sets,
     unit,
     language

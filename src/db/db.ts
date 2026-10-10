@@ -2,13 +2,14 @@ import Dexie, { type EntityTable } from 'dexie';
 import { Exercise, Workout, WorkoutExercise, Session, SessionSet, WeightUnit, UserProfile, BodyMetricLog } from '../types';
 import { convertWeight } from '../utils/unitConversion';
 import { seedDummyWorkouts, seedDummyBodyMetrics } from './seedDummyData';
+import { seedRealWorkouts } from './seedRealData';
 import { RoutineSessionRecord, RoutineExerciseInput } from '../utils/routineProgression';
 
 export class GymAppDatabase extends Dexie {
   exercises!: EntityTable<Exercise, 'id'>;
   workouts!: EntityTable<{ id?: number; name: string }, 'id'>;
   workout_exercises!: EntityTable<WorkoutExercise, 'id'>;
-  sessions!: EntityTable<{ id?: number; workout_id: number; date: string }, 'id'>;
+  sessions!: EntityTable<{ id?: number; workout_id: number; date: string; duration_seconds?: number }, 'id'>;
   session_sets!: EntityTable<SessionSet, 'id'>;
   user_profile!: EntityTable<UserProfile, 'id'>;
   body_metrics!: EntityTable<BodyMetricLog, 'id'>;
@@ -48,7 +49,7 @@ export const INITIAL_EXERCISES = [
 
 export const INITIAL_WORKOUTS = [
   {
-    name: 'Full Body A (2 Sets to 0 RIR)',
+    name: 'Full Body Tuesday',
     exerciseNames: [
       'Leg Press',
       'Flat Dumbbell Bench Press',
@@ -59,7 +60,7 @@ export const INITIAL_WORKOUTS = [
     ],
   },
   {
-    name: 'Full Body B (2 Sets to 0 RIR)',
+    name: 'Full Body Friday',
     exerciseNames: [
       'EZ-Bar Romanian Deadlifts',
       'Incline Bench Press',
@@ -70,25 +71,6 @@ export const INITIAL_WORKOUTS = [
     ],
   },
 ];
-
-export const INITIAL_TODAY_SESSION = {
-  workoutName: 'Full Body A (2 Sets to 0 RIR)',
-  date: new Date().toISOString(),
-  sets: [
-    { exerciseName: 'Leg Press', set_number: 1, weight: 270, reps: 18, unit: 'lb' as WeightUnit },
-    { exerciseName: 'Leg Press', set_number: 2, weight: 180, reps: 18, unit: 'lb' as WeightUnit },
-    { exerciseName: 'Flat Dumbbell Bench Press', set_number: 1, weight: 25, reps: 13, unit: 'lb' as WeightUnit },
-    { exerciseName: 'Flat Dumbbell Bench Press', set_number: 2, weight: 20, reps: 7, unit: 'lb' as WeightUnit },
-    { exerciseName: 'Lat Pulldowns', set_number: 1, weight: 66, reps: 14, unit: 'lb' as WeightUnit },
-    { exerciseName: 'Lat Pulldowns', set_number: 2, weight: 66, reps: 11, unit: 'lb' as WeightUnit },
-    { exerciseName: 'Seated Leg Curls', set_number: 1, weight: 80, reps: 9, unit: 'lb' as WeightUnit },
-    { exerciseName: 'Seated Leg Curls', set_number: 2, weight: 80, reps: 5, unit: 'lb' as WeightUnit },
-    { exerciseName: 'DB Lateral Raises', set_number: 1, weight: 20, reps: 14, unit: 'lb' as WeightUnit },
-    { exerciseName: 'DB Lateral Raises', set_number: 2, weight: 15, reps: 15, unit: 'lb' as WeightUnit },
-    { exerciseName: 'DB Bicep Curls', set_number: 1, weight: 20, reps: 5, unit: 'lb' as WeightUnit },
-    { exerciseName: 'DB Bicep Curls', set_number: 2, weight: 15, reps: 7, unit: 'lb' as WeightUnit },
-  ],
-};
 
 let initPromise: Promise<void> | null = null;
 
@@ -211,31 +193,6 @@ export const initDatabase = async (): Promise<void> => {
           }
         }
 
-        // Seed sample session if history is empty
-        const sessionCount = await db.sessions.count();
-        if (sessionCount === 0) {
-          const workout = await db.workouts.where('name').equalsIgnoreCase(INITIAL_TODAY_SESSION.workoutName).first();
-          if (workout && workout.id) {
-            const sessionId = await db.sessions.add({
-              workout_id: workout.id,
-              date: INITIAL_TODAY_SESSION.date,
-            });
-
-            for (const setItem of INITIAL_TODAY_SESSION.sets) {
-              const exId = exerciseIdMap[setItem.exerciseName];
-              if (exId) {
-                await db.session_sets.add({
-                  session_id: Number(sessionId),
-                  exercise_id: exId,
-                  set_number: setItem.set_number,
-                  weight: setItem.weight,
-                  reps: setItem.reps,
-                  unit: setItem.unit,
-                });
-              }
-            }
-          }
-        }
         // Restore standard Workout A and Workout B routines if initial seed
         await restoreOriginalWorkouts();
       } else {
@@ -275,31 +232,44 @@ export const initDatabase = async (): Promise<void> => {
       }
     });
 
-    // Seed dummy progressive overload workouts if not already seeded
-    await seedDummyWorkouts();
-
-    // Auto-cleanup seeded dummy body metrics once so existing browser databases start empty
+    // Auto-cleanup all seed/dummy sessions and metrics so user has a fresh real-data workspace
     try {
-      const DUMMY_CLEANUP_KEY = 'gymapp_dummy_metrics_cleared_v1';
-      if (typeof window !== 'undefined' && localStorage.getItem(DUMMY_CLEANUP_KEY) !== 'true') {
-        const dummyDates = [
-          '2025-09-28', '2025-10-12', '2025-10-26', '2025-11-09', '2025-11-23',
-          '2025-12-07', '2025-12-21', '2026-01-04', '2026-01-18', '2026-02-01',
-          '2026-02-15', '2026-03-01', '2026-03-15', '2026-03-29', '2026-04-12',
-          '2026-04-26', '2026-05-10', '2026-05-24', '2026-06-07', '2026-06-21',
-          '2026-07-05', '2026-07-19', '2026-08-02', '2026-08-16', '2026-08-30',
-          '2026-09-10', '2026-09-20'
-        ];
-        for (const d of dummyDates) {
-          const matched = await db.body_metrics.filter((m) => m.date.startsWith(d)).toArray();
-          for (const m of matched) {
-            if (m.id) await db.body_metrics.delete(m.id);
-          }
-        }
-        localStorage.setItem(DUMMY_CLEANUP_KEY, 'true');
+      const DUMMY_SESSIONS_CLEANUP_KEY = 'gymapp_seed_data_cleared_v4';
+      if (typeof window !== 'undefined' && localStorage.getItem(DUMMY_SESSIONS_CLEANUP_KEY) !== 'true') {
+        await db.transaction('rw', db.sessions, db.session_sets, db.body_metrics, async () => {
+          await db.sessions.clear();
+          await db.session_sets.clear();
+          await db.body_metrics.clear();
+        });
+        localStorage.setItem(DUMMY_SESSIONS_CLEANUP_KEY, 'true');
+        localStorage.removeItem('gymapp_dummy_workouts_seeded_1year_v3');
+        localStorage.removeItem('gymapp_real_workout_history_v1');
       }
     } catch (cleanErr) {
-      console.warn('Dummy metrics cleanup:', cleanErr);
+      console.warn('Seed data cleanup error:', cleanErr);
+    }
+
+    // Migration: Rename existing routines to 'Full Body Tuesday' and 'Full Body Friday'
+    try {
+      const allW = await db.workouts.toArray();
+      for (const w of allW) {
+        if (!w.id) continue;
+        const low = w.name.toLowerCase();
+        if (low.includes('body a') || low.includes('workout a') || low.includes('martes')) {
+          await db.workouts.update(w.id, { name: 'Full Body Tuesday' });
+        } else if (low.includes('body b') || low.includes('workout b') || low.includes('viernes')) {
+          await db.workouts.update(w.id, { name: 'Full Body Friday' });
+        }
+      }
+    } catch (renameErr) {
+      console.warn('Routine rename migration error:', renameErr);
+    }
+
+    // Seed real user workout history
+    try {
+      await seedRealWorkouts();
+    } catch (realErr) {
+      console.warn('Real workouts seeding error:', realErr);
     }
 
     // Data healing migration: if Workout A was linked to Hack Squats with 0 sets but Leg Press has history sets, link Leg Press by ID
@@ -387,7 +357,7 @@ export const restoreOriginalWorkouts = async (): Promise<void> => {
       }
     }
 
-    // 2. Identify Workout A and Workout B
+    // 2. Identify Full Body Tuesday and Full Body Friday
     const allWorkouts = await db.workouts.toArray();
 
     let workoutA = allWorkouts.find(
@@ -395,7 +365,11 @@ export const restoreOriginalWorkouts = async (): Promise<void> => {
     );
     if (!workoutA) {
       workoutA = allWorkouts.find(
-        (w) => w.name.toLowerCase().includes('body a') || w.name.toLowerCase().includes('workout a')
+        (w) =>
+          w.name.toLowerCase().includes('tuesday') ||
+          w.name.toLowerCase().includes('martes') ||
+          w.name.toLowerCase().includes('body a') ||
+          w.name.toLowerCase().includes('workout a')
       );
     }
 
@@ -404,7 +378,11 @@ export const restoreOriginalWorkouts = async (): Promise<void> => {
     );
     if (!workoutB) {
       workoutB = allWorkouts.find(
-        (w) => w.name.toLowerCase().includes('body b') || w.name.toLowerCase().includes('workout b')
+        (w) =>
+          w.name.toLowerCase().includes('friday') ||
+          w.name.toLowerCase().includes('viernes') ||
+          w.name.toLowerCase().includes('body b') ||
+          w.name.toLowerCase().includes('workout b')
       );
     }
 
@@ -459,7 +437,7 @@ export const restoreOriginalWorkouts = async (): Promise<void> => {
 };
 
 
-export { seedDummyWorkouts };
+export { seedDummyWorkouts, seedRealWorkouts };
 
 // CRUD API
 export const fetchExercises = async (): Promise<Exercise[]> => {
@@ -622,12 +600,14 @@ export const deleteWorkout = async (id: number): Promise<void> => {
 export const saveCompletedSession = async (
   workoutId: number,
   dateIso: string,
-  sets: SessionSet[]
+  sets: SessionSet[],
+  durationSeconds?: number
 ): Promise<number> => {
   return await db.transaction('rw', db.sessions, db.session_sets, async () => {
     const sessionId = await db.sessions.add({
       workout_id: workoutId,
       date: dateIso,
+      duration_seconds: durationSeconds !== undefined && durationSeconds > 0 ? durationSeconds : undefined,
     });
 
     for (const setItem of sets) {
@@ -677,6 +657,7 @@ export const fetchSessionsHistory = async (): Promise<Session[]> => {
       workout_name: workout ? workout.name : 'Workout Session',
       date: s.date,
       total_sets: sets.length,
+      duration_seconds: s.duration_seconds,
     });
   }
 

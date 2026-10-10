@@ -1,11 +1,36 @@
 import { SessionSet, WeightUnit, AppLanguage } from '../types';
 import { convertWeight } from './unitConversion';
-import { t } from './i18n';
 
-interface WorkoutShareData {
+export interface WorkoutShareData {
   workout_name?: string;
   date: string;
   durationSeconds?: number;
+  duration_seconds?: number;
+}
+
+export function formatWorkoutDuration(totalSeconds: number, language: AppLanguage = 'en'): string {
+  if (!totalSeconds || totalSeconds <= 0) return '';
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  const isEs = language === 'es';
+
+  if (hours > 0) {
+    if (minutes > 0) {
+      return isEs ? `${hours} h ${minutes} min` : `${hours}h ${minutes}m`;
+    }
+    return isEs ? `${hours} h` : `${hours}h`;
+  }
+
+  if (minutes > 0) {
+    if (seconds > 0) {
+      return isEs ? `${minutes} min ${seconds} s` : `${minutes}m ${seconds}s`;
+    }
+    return isEs ? `${minutes} min` : `${minutes}m`;
+  }
+
+  return isEs ? `${seconds} s` : `${seconds}s`;
 }
 
 export function generateWorkoutShareText(
@@ -28,11 +53,16 @@ export function generateWorkoutShareText(
   const headerTitle = isEs ? '🏋️ *Registro de Entrenamiento - GymApp*' : '🏋️ *GymApp Workout Log*';
   const dateLabel = isEs ? '📅 *Fecha:*' : '📅 *Date:*';
   const routineLabel = isEs ? '🔥 *Rutina:*' : '🔥 *Routine:*';
+  const durationLabel = isEs ? '⏱️ *Duración:*' : '⏱️ *Duration:*';
   const exercisesTitle = isEs ? '💪 *Ejercicios y Series:*' : '💪 *Exercises & Sets:*';
   const summaryTitle = isEs ? '📊 *Resumen:*' : '📊 *Summary:*';
   const totalSetsLabel = isEs ? '• Series Totales:' : '• Total Sets:';
   const totalVolumeLabel = isEs ? '• Volumen Total:' : '• Total Volume:';
+  const totalDurationLabel = isEs ? '• Tiempo Total:' : '• Total Duration:';
   const footer = isEs ? '✨ *Registrado con GymApp*' : '✨ *Logged with GymApp*';
+
+  const rawDuration = session.durationSeconds ?? session.duration_seconds;
+  const durationStr = rawDuration && rawDuration > 0 ? formatWorkoutDuration(rawDuration, language) : '';
 
   // Group sets by exercise
   const grouped = sets.reduce((acc, setItem) => {
@@ -95,24 +125,51 @@ export function generateWorkoutShareText(
       ? `\n${totalVolumeLabel} ${Math.round(totalVolume).toLocaleString()} ${unit}`
       : '';
 
-  return [
+  const headerLines: string[] = [
     headerTitle,
     `${dateLabel} ${formattedDate}`,
     `${routineLabel} ${session.workout_name || (isEs ? 'Entrenamiento' : 'Workout')}`,
+  ];
+  if (durationStr) {
+    headerLines.push(`${durationLabel} ${durationStr}`);
+  }
+
+  const summaryLines: string[] = [
+    summaryTitle,
+    `${totalSetsLabel} ${totalValidSets}${volumeStr}`,
+  ];
+  if (durationStr) {
+    summaryLines.push(`${totalDurationLabel} ${durationStr}`);
+  }
+
+  return [
+    headerLines.join('\n'),
     '',
     exercisesTitle,
     exerciseLines.length > 0 ? exerciseLines.join('\n\n') : (isEs ? '  (Sin series registradas)' : '  (No sets recorded)'),
     '',
-    summaryTitle,
-    `${totalSetsLabel} ${totalValidSets}${volumeStr}`,
+    summaryLines.join('\n'),
     '',
     footer,
   ].join('\n');
 }
 
 export function shareViaWhatsApp(text: string): void {
-  const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
-  window.open(url, '_blank', 'noopener,noreferrer');
+  const encodedText = encodeURIComponent(text);
+
+  // Detect mobile or touch-primary device to use direct app intent without creating empty browser tabs
+  const isMobile =
+    typeof navigator !== 'undefined' &&
+    (/Android|iPhone|iPad|iPod|Windows Phone|webOS|BlackBerry/i.test(navigator.userAgent) ||
+      (navigator.maxTouchPoints > 0 && typeof window !== 'undefined' && window.innerWidth <= 1024));
+
+  if (isMobile) {
+    // Direct WhatsApp app protocol scheme on mobile / PWA avoids opening blank browser tabs
+    window.location.href = `whatsapp://send?text=${encodedText}`;
+  } else {
+    // On desktop, use web.whatsapp.com directly without opening blank intermediate redirect pages
+    window.open(`https://web.whatsapp.com/send?text=${encodedText}`, '_blank', 'noopener,noreferrer');
+  }
 }
 
 export async function shareViaNavigator(title: string, text: string): Promise<boolean> {
